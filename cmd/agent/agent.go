@@ -56,7 +56,7 @@ func runtimeContext() string {
 	tools := []string{"ag", "rg", "git", "go", "gofmt", "docker", "fzf", "python", "python3", "php", "curl", "wget"}
 	found := []string{}
 	for _, t := range tools {
-		if p, err := exec.LookPath(t); err == nil {
+		if _, err := exec.LookPath(t); err == nil {
 			found = append(found, t+" ")
 		}
 	}

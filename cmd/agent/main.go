@@ -19,6 +19,12 @@ func main() {
 
 	pol := &Policy{Readonly: *readonly, DryShell: *dry, Allow: *allow, Deny: *deny, CWD: *cwd}
 
+	// If program invoked with no args at all, behave as if --repl was provided.
+	if len(os.Args) == 1 {
+		startREPL(*model, pol)
+		return
+	}
+
 	if *repl {
 		startREPL(*model, pol)
 		return
