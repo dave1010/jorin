@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -13,7 +15,9 @@ Prefer small, auditable steps. Read before you write. Summarize long outputs.`
 
 // loadSystemPrompt returns the base system prompt and, if an AGENTS.md file
 // exists in the current working directory, appends its contents preceded by
-// "Project-specific instructions:".
+// "Project-specific instructions:". It also appends runtime environment
+// context (uname/runtime info, working directory, presence of a git
+// repository, and a short list of handy tools found on PATH).
 func loadSystemPrompt() string {
 	sp := systemPrompt
 	if _, err := os.Stat("AGENTS.md"); err == nil {
@@ -21,7 +25,47 @@ func loadSystemPrompt() string {
 			sp = sp + "\n\nProject-specific instructions:\n" + string(b)
 		}
 	}
+	// Append runtime context
+	ctx := runtimeContext()
+	if ctx != "" {
+		sp = sp + "\n\nRuntime environment:\n" + ctx
+	}
 	return sp
+}
+
+func runtimeContext() string {
+	parts := []string{}
+	// uname -a if available
+	if out, err := exec.Command("uname", "-a").Output(); err == nil {
+		parts = append(parts, strings.TrimSpace(string(out)))
+	} else {
+		// fallback to GOOS/GOARCH
+		parts = append(parts, "OS: "+runtime.GOOS+" "+runtime.GOARCH)
+	}
+	// working directory
+	if wd, err := os.Getwd(); err == nil {
+		parts = append(parts, "PWD: "+wd)
+	}
+	// git repo presence
+	if _, err := os.Stat(".git"); err == nil {
+		parts = append(parts, "Git repository: yes (.git exists)")
+	} else {
+		parts = append(parts, "Git repository: no (.git not found)")
+	}
+	// check for a few handy tools
+	tools := []string{"ag", "rg", "git", "go", "gofmt", "docker", "fzf", "python", "python3", "php", "curl", "wget"}
+	found := []string{}
+	for _, t := range tools {
+		if p, err := exec.LookPath(t); err == nil {
+			found = append(found, t+" ")
+		}
+	}
+	if len(found) > 0 {
+		parts = append(parts, "Tools on PATH (others will exist too): "+strings.Join(found, ", "))
+	} else {
+		parts = append(parts, "Tools on PATH: none of "+strings.Join(tools, ", "))
+	}
+	return strings.Join(parts, "\n")
 }
 
 func runAgent(model string, userPrompt string, pol *Policy) (string, error) {
