@@ -263,6 +263,70 @@ func chatOnce(model string, msgs []Message, tools []Tool) (*ChatResponse, error)
 	return &out, nil
 }
 
+// chatSession runs the model starting from msgs and executes any tool calls until the assistant
+// returns a non-tool-calling message. It returns the updated messages (with assistant/tool
+// messages appended) and the assistant's final content.
+func chatSession(model string, msgs []Message, pol *Policy) ([]Message, string, error) {
+	tools := toolsManifest()
+	reg := registry()
+	for i := 0; i < 16; i++ {
+		resp, err := chatOnce(model, msgs, tools)
+		if err != nil {
+			return msgs, "", err
+		}
+		if len(resp.Choices) == 0 {
+			return msgs, "", errors.New("no choices")
+		}
+		ch := resp.Choices[0]
+		cm := ch.Message
+
+		// append assistant message
+		msgs = append(msgs, cm)
+
+		// If tool calls present, execute them serially and loop
+		if len(cm.ToolCalls) > 0 {
+			for _, tc := range cm.ToolCalls {
+				// show which tool is being called (trimmed)
+				fmt.Fprintln(os.Stderr, "CALL TOOL:", tc.Function.Name, preview(tc.Function.Args, 200))
+				fn := reg[tc.Function.Name]
+				if fn == nil {
+					msgs = append(msgs, Message{
+						Role:       "tool",
+						Name:       tc.Function.Name,
+						ToolCallID: tc.ID,
+						Content:    `{"error":"unknown tool"}`,
+					})
+					continue
+				}
+				var args map[string]any
+				if err := json.Unmarshal([]byte(tc.Function.Args), &args); err != nil {
+					msgs = append(msgs, Message{
+						Role:       "tool",
+						Name:       tc.Function.Name,
+						ToolCallID: tc.ID,
+						Content:    `{"error":"bad arguments"}`,
+					})
+					continue
+				}
+				out, _ := fn(args, pol)
+				b, _ := json.Marshal(out)
+				msgs = append(msgs, Message{
+					Role:       "tool",
+					Name:       tc.Function.Name,
+					ToolCallID: tc.ID,
+					Content:    string(b),
+				})
+			}
+			// continue the loop so model sees tool outputs and can respond
+			continue
+		}
+
+		// otherwise final assistant content (no tool calls)
+		return msgs, cm.Content, nil
+	}
+	return msgs, "", errors.New("max turns reached")
+}
+
 // --- agent loop ---
 
 const systemPrompt = `You are a coding agent, designed to call tools to complete tasks.
@@ -274,59 +338,8 @@ func runAgent(model string, userPrompt string, pol *Policy) (string, error) {
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
 	}
-	tools := toolsManifest()
-	reg := registry()
-
-	for i := 0; i < 16; i++ {
-		resp, err := chatOnce(model, msgs, tools)
-		if err != nil {
-			return "", err
-		}
-		if len(resp.Choices) == 0 {
-			return "", errors.New("no choices")
-		}
-		ch := resp.Choices[0]
-		cm := ch.Message
-
-		// If tool calls present, execute them serially and loop
-		if len(cm.ToolCalls) > 0 {
-			msgs = append(msgs, cm)
-			for _, tc := range cm.ToolCalls {
-				// show which tool is being called (trimmed)
-				fmt.Fprintln(os.Stderr, "CALL TOOL:", tc.Function.Name, preview(tc.Function.Args, 200))
-				fn := reg[tc.Function.Name]
-				if fn == nil {
-					msgs = append(msgs, Message{
-						Role: "tool", Name: tc.Function.Name,
-						ToolCallID: tc.ID,
-						Content:    `{"error":"unknown tool"}`,
-					})
-					continue
-				}
-				var args map[string]any
-				if err := json.Unmarshal([]byte(tc.Function.Args), &args); err != nil {
-					msgs = append(msgs, Message{
-						Role: "tool", Name: tc.Function.Name,
-						ToolCallID: tc.ID,
-						Content:    `{"error":"bad arguments"}`,
-					})
-					continue
-				}
-				out, _ := fn(args, pol)
-				b, _ := json.Marshal(out)
-				msgs = append(msgs, Message{
-					Role: "tool", Name: tc.Function.Name,
-					ToolCallID: tc.ID,
-					Content:    string(b),
-				})
-			}
-			continue
-		}
-
-		// otherwise final assistant content
-		return cm.Content, nil
-	}
-	return "", errors.New("max turns reached")
+	_, out, err := chatSession(model, msgs, pol)
+	return out, err
 }
 
 // --- CLI ---
@@ -346,6 +359,8 @@ func main() {
 	if *repl {
 		in := bufio.NewScanner(os.Stdin)
 		fmt.Println("agent> (Ctrl-D to exit)")
+		// start conversation with system prompt
+		msgs := []Message{{Role: "system", Content: systemPrompt}}
 		for {
 			fmt.Print("> ")
 			if !in.Scan() {
@@ -355,7 +370,11 @@ func main() {
 			if q == "" {
 				continue
 			}
-			out, err := runAgent(*model, q, pol)
+			// append user message and continue the same conversation
+			msgs = append(msgs, Message{Role: "user", Content: q})
+			var out string
+			var err error
+			msgs, out, err = chatSession(*model, msgs, pol)
 			if err != nil {
 				fmt.Println("ERR:", err)
 				continue
