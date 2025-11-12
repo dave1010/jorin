@@ -1,0 +1,14 @@
+# Binaries
+agent
+
+# OS files
+.DS_Store
+
+# Editor
+.vscode/
+*.swp
+
+# Go
+bin/
+*.exe
+*.test
