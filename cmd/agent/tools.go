@@ -32,17 +32,17 @@ func toolsManifest() (list []Tool) {
 	return []Tool{
 		{Type: "function", Function: ToolFunction{
 			Name:        "shell",
-			Description: "Execute a shell command; returns stdout/stderr/returncode. Use cautiously.",
+			Description: "Execute a shell command; returns stdout/stderr/returncode. Use cautiously if commands may be destructive.",
 			Parameters:  schema(`{"type":"object","properties":{"cmd":{"type":"string"}},"required":["cmd"]}`),
 		}},
 		{Type: "function", Function: ToolFunction{
 			Name:        "read_file",
-			Description: "Read a UTF-8 text file and return contents (truncated).",
+			Description: "Read a UTF-8 text file and return contents. Very long files will be truncated.",
 			Parameters:  schema(`{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}`),
 		}},
 		{Type: "function", Function: ToolFunction{
 			Name:        "write_file",
-			Description: "Write UTF-8 text to a file (creates/overwrites). Disabled in readonly.",
+			Description: "Write UTF-8 text to a file (creates/overwrites).",
 			Parameters:  schema(`{"type":"object","properties":{"path":{"type":"string"},"text":{"type":"string"}},"required":["path","text"]}`),
 		}},
 		{Type: "function", Function: ToolFunction{
