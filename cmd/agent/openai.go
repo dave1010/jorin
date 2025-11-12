@@ -48,7 +48,7 @@ func chatOnce(model string, msgs []Message, tools []Tool) (*ChatResponse, error)
 func chatSession(model string, msgs []Message, pol *Policy) ([]Message, string, error) {
 	tools := toolsManifest()
 	reg := registry()
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 100; i++ {
 		resp, err := chatOnce(model, msgs, tools)
 		if err != nil {
 			return msgs, "", err

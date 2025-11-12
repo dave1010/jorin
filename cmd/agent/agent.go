@@ -36,10 +36,10 @@ func runAgent(model string, userPrompt string, pol *Policy) (string, error) {
 // kept for REPL support in main
 func startREPL(model string, pol *Policy) {
 	in := bufio.NewScanner(os.Stdin)
-	fmt.Println("agent> (Ctrl-D to exit)")
+	fmt.Println(headerStyleStr("agent> (Ctrl-D to exit)"))
 	msgs := []Message{{Role: "system", Content: loadSystemPrompt()}}
 	for {
-		fmt.Print("> ")
+		fmt.Print(promptStyleStr("> "))
 		if !in.Scan() {
 			break
 		}
@@ -52,9 +52,9 @@ func startREPL(model string, pol *Policy) {
 		var err error
 		msgs, out, err = chatSession(model, msgs, pol)
 		if err != nil {
-			fmt.Println("ERR:", err)
+			fmt.Println(errorStyleStr("ERR:"), err)
 			continue
 		}
-		fmt.Println(out)
+		fmt.Println(infoStyleStr(out))
 	}
 }
