@@ -53,7 +53,7 @@ func runtimeContext() string {
 		parts = append(parts, "Git repository: no (.git not found)")
 	}
 	// check for a few handy tools
-	tools := []string{"ag", "rg", "git", "go", "gofmt", "docker", "fzf", "python", "python3", "php", "curl", "wget"}
+	tools := []string{"ag", "rg", "git", "gh", "go", "gofmt", "docker", "fzf", "python", "python3", "php", "curl", "wget"}
 	found := []string{}
 	for _, t := range tools {
 		if _, err := exec.LookPath(t); err == nil {
