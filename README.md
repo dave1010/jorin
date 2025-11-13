@@ -8,6 +8,30 @@ Usage:
 
 The module path is github.com/dave1010/agent
 
+Makefile targets
+
+This repository includes a Makefile with the following targets to simplify common tasks:
+
+- all (default): builds the agent (same as `make build`).
+- build: compiles the binary and writes it to the value of BINARY (default: `agent`). Use `make build` or `make`.
+- fmt: runs `gofmt -w .` to format all Go files in the repository.
+- test: runs `go test ./...` to execute the full test suite.
+- clean: removes the compiled binary (runs `rm -f $(BINARY)`).
+
+Examples:
+
+  # build the agent
+  make build
+
+  # format all Go files
+  make fmt
+
+  # run the full test suite
+  make test
+
+  # clean the compiled binary
+  make clean
+
 Running tests
 
 This repository includes unit tests for the cmd/agent package. To run the full test suite from the repository root:
