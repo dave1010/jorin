@@ -80,7 +80,7 @@ func runAgent(model string, userPrompt string, pol *Policy) (string, error) {
 // kept for REPL support in main
 func startREPL(model string, pol *Policy) {
 	in := bufio.NewScanner(os.Stdin)
-	fmt.Println(headerStyleStr("agent> (Ctrl-D to exit)"))
+	fmt.Println(headerStyleStr("jorin> (Ctrl-D to exit)"))
 	msgs := []Message{{Role: "system", Content: loadSystemPrompt()}}
 	for {
 		fmt.Print(promptStyleStr("> "))

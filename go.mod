@@ -1,4 +1,4 @@
-module github.com/dave1010/agent
+module github.com/dave1010/jorin
 
 go 1.20
 

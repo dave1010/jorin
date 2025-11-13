@@ -1,4 +1,4 @@
-BINARY := agent
+BINARY := jorin
 PKG := ./cmd/agent
 GO := go
 

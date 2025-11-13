@@ -1,19 +1,20 @@
-# agent
+# `jorin`
 
-A small coding agent that calls tools (shell, read_file, write_file, http_get) and speaks to an OpenAI-compatible API. Built to be used as a command-line tool and REPL.
+A small coding agent that calls tools (shell, read_file, write_file, http_get) and
+speaks to an OpenAI-compatible API. Built to be used as a command-line tool and REPL.
 
 Usage:
-  go build -o agent ./cmd/agent
-  ./agent --help
+  go build -o jorin ./cmd/agent
+  ./jorin --help
 
-The module path is github.com/dave1010/agent
+The module path is github.com/dave1010/jorin
 
 Makefile targets
 
 This repository includes a Makefile with the following targets to simplify common tasks:
 
 - all (default): builds the agent (same as `make build`).
-- build: compiles the binary and writes it to the value of BINARY (default: `agent`). Use `make build` or `make`.
+- build: compiles the binary and writes it to the value of BINARY (default: `jorin`). Use `make build` or `make`.
 - fmt: runs `gofmt -w .` to format all Go files in the repository.
 - test: runs `go test ./...` to execute the full test suite.
 - clean: removes the compiled binary (runs `rm -f $(BINARY)`).
