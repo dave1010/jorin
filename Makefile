@@ -1,5 +1,5 @@
 BINARY := jorin
-PKG := ./cmd/agent
+PKG := ./cmd/jorin
 GO := go
 
 .PHONY: all build clean fmt test
