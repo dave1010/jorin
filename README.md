@@ -161,6 +161,9 @@ The repository includes a Makefile with common targets to simplify development:
 - all (default): builds the agent (same as `make build`).
 - build: compiles the binary and writes it to the value of `BINARY` (default: `jorin`).
 - fmt: formats Go source files (`gofmt -w .`).
+- fmt-check: checks formatting using `gofmt -l`.
+- lint: runs `golangci-lint run --timeout=5m ./...` (requires golangci-lint installed).
+- check: runs fmt-check, lint and tests (convenience target used by CI).
 - test: runs the full test suite (`go test ./...`).
 - clean: removes the compiled binary (`rm -f $(BINARY)`).
 
@@ -178,12 +181,27 @@ or
 go test ./...
 ```
 
-## Formatting
+## Formatting and linting
 
 Run `gofmt -w .` or use the make target:
 
 ```bash
 make fmt
+```
+
+Check formatting:
+
+```bash
+make fmt-check
+```
+
+Install and run golangci-lint locally (recommended to match CI):
+
+```bash
+# install
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0
+# run
+make lint
 ```
 
 ## Contributing
