@@ -68,7 +68,41 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 		if len(cm.ToolCalls) > 0 {
 			for _, tc := range cm.ToolCalls {
 				// show which tool is being called (trimmed)
-				fmt.Fprintln(os.Stderr, "CALL TOOL:", tc.Function.Name, tools.Preview(tc.Function.Args, 200))
+				preview := tools.Preview(tc.Function.Args, 200)
+
+				// determine prefix based on tool name
+				prefix := tc.Function.Name
+				switch tc.Function.Name {
+				case "shell":
+					prefix = "$"
+				case "read_file":
+					prefix = "@"
+				case "write_file":
+					prefix = "@w"
+				}
+
+				// decide whether to emit ANSI colors
+				useColor := false
+				if os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "" && os.Getenv("TERM") != "dumb" {
+					useColor = true
+				}
+
+				if useColor {
+					col := "\x1b[36m" // default cyan
+					switch tc.Function.Name {
+					case "shell":
+						col = "\x1b[32m" // green
+					case "read_file":
+						col = "\x1b[33m" // yellow
+					case "write_file":
+						col = "\x1b[38;5;208m" // orange
+					}
+					reset := "\x1b[0m"
+					fmt.Fprintln(os.Stderr, col+prefix+" "+preview+reset)
+				} else {
+					fmt.Fprintln(os.Stderr, prefix+" "+preview)
+				}
+
 				fn := reg[tc.Function.Name]
 				if fn == nil {
 					msgs = append(msgs, types.Message{
