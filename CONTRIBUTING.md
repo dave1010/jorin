@@ -7,9 +7,13 @@ contributions smooth and easy to review.
 - Write tests for bug fixes and new features when applicable.
 - Update the README or other documentation if you change behavior or add new commands.
 - For release-related changes, update CHANGELOG.md (see release workflow guidance in README).
+- Include or update usage examples in README.md when changing CLI flags or behavior.
 
 Workflow:
 
 1. Fork the repository and create a branch for your change.
 2. Make changes, run `go test ./...`, and ensure formatting is correct.
 3. Open a pull request describing your changes and linking any related issues.
+
+If your change is user-facing (CLI behavior, flags, or defaults), include or
+update usage examples in README.md.
