@@ -7,25 +7,27 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/dave1010/jorin/internal/types"
 )
 
 func TestRunAgent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req ChatRequest
+		var req types.ChatRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Errorf("Failed to decode request: %v", err)
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
-		var resp ChatResponse
+		var resp types.ChatResponse
 		if len(req.Messages) == 2 && req.Messages[1].Role == "user" {
-			resp = ChatResponse{
-				Choices: []Choice{
+			resp = types.ChatResponse{
+				Choices: []types.Choice{
 					{
-						Message: Message{
+						Message: types.Message{
 							Role: "assistant",
-							ToolCalls: []ToolCall{
+							ToolCalls: []types.ToolCall{
 								{
 									ID:   "call_123",
 									Type: "function",
@@ -44,10 +46,10 @@ func TestRunAgent(t *testing.T) {
 				},
 			}
 		} else if len(req.Messages) > 2 && req.Messages[len(req.Messages)-1].Role == "tool" {
-			resp = ChatResponse{
-				Choices: []Choice{
+			resp = types.ChatResponse{
+				Choices: []types.Choice{
 					{
-						Message: Message{
+						Message: types.Message{
 							Role:    "assistant",
 							Content: "File content: hello",
 						},
@@ -76,7 +78,7 @@ func TestRunAgent(t *testing.T) {
 	}
 	defer os.Remove("test.txt")
 
-	pol := &Policy{}
+	pol := &types.Policy{}
 	out, err := runAgent("test-model", "read the file test.txt", pol)
 	if err != nil {
 		t.Fatalf("runAgent failed: %v", err)

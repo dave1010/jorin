@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/dave1010/jorin/internal/types"
 )
 
 func main() {
@@ -17,7 +19,7 @@ func main() {
 	cwd := flag.String("cwd", "", "Working directory for tools")
 	flag.Parse()
 
-	pol := &Policy{Readonly: *readonly, DryShell: *dry, Allow: *allow, Deny: *deny, CWD: *cwd}
+	pol := &types.Policy{Readonly: *readonly, DryShell: *dry, Allow: *allow, Deny: *deny, CWD: *cwd}
 
 	// If program invoked with no args at all, behave as if --repl was provided.
 	if len(os.Args) == 1 {

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dave1010/jorin/internal/types"
 )
 
 func TestToolsManifestAndRegistryKeys(t *testing.T) {
@@ -48,7 +50,7 @@ func TestReadFileLargeAndWriteFileBytes(t *testing.T) {
 	if err := os.WriteFile(f, b, 0o644); err != nil {
 		t.Fatalf("write big file: %v", err)
 	}
-	out, err := r["read_file"](map[string]any{"path": f}, &Policy{})
+	out, err := r["read_file"](map[string]any{"path": f}, &types.Policy{})
 	if err != nil {
 		t.Fatalf("read_file failed: %v", err)
 	}
@@ -65,7 +67,7 @@ func TestReadFileLargeAndWriteFileBytes(t *testing.T) {
 	wf := r["write_file"]
 	d := filepath.Join(tmp, "sub")
 	p := filepath.Join(d, "out.txt")
-	outw, err := wf(map[string]any{"path": p, "text": "hello bytes"}, &Policy{})
+	outw, err := wf(map[string]any{"path": p, "text": "hello bytes"}, &types.Policy{})
 	if err != nil {
 		t.Fatalf("write_file failed: %v", err)
 	}
@@ -89,7 +91,7 @@ func TestHttpGetTool(t *testing.T) {
 	defer srv.Close()
 
 	r := registry()
-	out, err := r["http_get"](map[string]any{"url": srv.URL}, &Policy{})
+	out, err := r["http_get"](map[string]any{"url": srv.URL}, &types.Policy{})
 	if err != nil {
 		t.Fatalf("http_get failed: %v", err)
 	}
@@ -111,28 +113,28 @@ func TestShellPolicyAllowDenyDryAndCWD(t *testing.T) {
 	shell := r["shell"]
 
 	// missing cmd
-	if _, err := shell(map[string]any{}, &Policy{}); err == nil {
+	if _, err := shell(map[string]any{}, &types.Policy{}); err == nil {
 		t.Fatalf("expected error for missing cmd")
 	}
 
 	// deny should block
-	out, _ := shell(map[string]any{"cmd": "do forbidden stuff"}, &Policy{Deny: []string{"forbidden"}})
+	out, _ := shell(map[string]any{"cmd": "do forbidden stuff"}, &types.Policy{Deny: []string{"forbidden"}})
 	if out["error"] != "denied by policy" {
 		t.Fatalf("expected denied by policy, got %#v", out)
 	}
 
 	// allow list present requires allowed substring
-	out, _ = shell(map[string]any{"cmd": "run ALLOW_ME now"}, &Policy{Allow: []string{"ALLOW_ME"}})
+	out, _ = shell(map[string]any{"cmd": "run ALLOW_ME now"}, &types.Policy{Allow: []string{"ALLOW_ME"}})
 	if _, ok := out["dry_run"]; ok {
 		// dry_run not set; ok
 	}
-	out, _ = shell(map[string]any{"cmd": "nope"}, &Policy{Allow: []string{"ALLOW_ME"}})
+	out, _ = shell(map[string]any{"cmd": "nope"}, &types.Policy{Allow: []string{"ALLOW_ME"}})
 	if out["error"] != "not allowed by policy" {
 		t.Fatalf("expected not allowed by policy, got %#v", out)
 	}
 
 	// dry run
-	out, _ = shell(map[string]any{"cmd": "echo hi"}, &Policy{DryShell: true})
+	out, _ = shell(map[string]any{"cmd": "echo hi"}, &types.Policy{DryShell: true})
 	if dr, _ := out["dry_run"].(bool); !dr {
 		t.Fatalf("expected dry_run true, got %#v", out)
 	}
@@ -141,7 +143,7 @@ func TestShellPolicyAllowDenyDryAndCWD(t *testing.T) {
 	}
 
 	// actual execution: echo and exit code
-	out, err := shell(map[string]any{"cmd": "echo -n DONE; exit 0"}, &Policy{})
+	out, err := shell(map[string]any{"cmd": "echo -n DONE; exit 0"}, &types.Policy{})
 	if err != nil {
 		t.Fatalf("shell execution failed: %v", err)
 	}
@@ -168,7 +170,7 @@ func TestShellPolicyAllowDenyDryAndCWD(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 	// run from tmp dir
-	out, err = shell(map[string]any{"cmd": "./writecwd.sh"}, &Policy{CWD: tmp})
+	out, err = shell(map[string]any{"cmd": "./writecwd.sh"}, &types.Policy{CWD: tmp})
 	if err != nil {
 		t.Fatalf("shell CWD exec failed: %v", err)
 	}
@@ -192,7 +194,7 @@ func TestHttpGetTimeout(t *testing.T) {
 
 	r := registry()
 	start := time.Now()
-	out, err := r["http_get"](map[string]any{"url": srv.URL}, &Policy{})
+	out, err := r["http_get"](map[string]any{"url": srv.URL}, &types.Policy{})
 	dur := time.Since(start)
 	if err != nil {
 		t.Fatalf("http_get delayed failed: %v", err)
