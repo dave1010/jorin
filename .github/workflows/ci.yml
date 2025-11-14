@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  check:
+    name: Lint, fmt-check, and tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            # Module cache
+            ${{ github.workspace }}/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Run gofmt (check)
+        run: |
+          echo "Checking formatting with gofmt..."
+          fmt_output=$(gofmt -l . || true)
+          if [ -n "$fmt_output" ]; then
+            echo "The following files need formatting:";
+            echo "$fmt_output";
+            echo "Run 'gofmt -w .' to fix.";
+            exit 1;
+          fi
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $GITHUB_ACTION_PATH/bin v1.59.0
+          echo "${GITHUB_ACTION_PATH}/bin" >> $GITHUB_PATH
+
+      - name: Run golangci-lint
+        run: |
+          golangci-lint version
+          golangci-lint run ./...
+
+      - name: Run tests
+        run: |
+          go test ./... -v
+
+  build:
+    name: Build binaries
+    runs-on: ubuntu-latest
+    needs: check
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+
+      - name: Build
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          echo "Building for $GOOS/$GOARCH"
+          BINARY=jorin
+          mkdir -p dist
+          GOFLAGS="" go build -ldflags "-s -w" -o dist/${BINARY}-${GOOS}-${GOARCH} ./cmd/jorin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jorin-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/
