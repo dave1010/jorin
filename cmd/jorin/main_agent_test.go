@@ -70,13 +70,21 @@ func TestRunAgent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	os.Setenv("OPENAI_BASE_URL", server.URL)
-	os.Setenv("OPENAI_API_KEY", "test-key")
+	if err := os.Setenv("OPENAI_BASE_URL", server.URL); err != nil {
+		t.Fatalf("failed to set env: %v", err)
+	}
+	if err := os.Setenv("OPENAI_API_KEY", "test-key"); err != nil {
+		t.Fatalf("failed to set env: %v", err)
+	}
 
 	if err := os.WriteFile("test.txt", []byte("hello"), 0644); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
-	defer os.Remove("test.txt")
+	defer func() {
+		if err := os.Remove("test.txt"); err != nil {
+			t.Fatalf("failed to remove test file: %v", err)
+		}
+	}()
 
 	pol := &types.Policy{}
 	out, err := runAgent("test-model", "read the file test.txt", pol)
