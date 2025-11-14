@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+
+	"github.com/dave1010/jorin/internal/types"
 )
 
 const systemPrompt = `You are a coding agent, designed to call tools to complete tasks.
@@ -68,8 +70,8 @@ func runtimeContext() string {
 	return strings.Join(parts, "\n")
 }
 
-func runAgent(model string, userPrompt string, pol *Policy) (string, error) {
-	msgs := []Message{
+func runAgent(model string, userPrompt string, pol *types.Policy) (string, error) {
+	msgs := []types.Message{
 		{Role: "system", Content: loadSystemPrompt()},
 		{Role: "user", Content: userPrompt},
 	}
@@ -78,10 +80,10 @@ func runAgent(model string, userPrompt string, pol *Policy) (string, error) {
 }
 
 // kept for REPL support in main
-func startREPL(model string, pol *Policy) {
+func startREPL(model string, pol *types.Policy) {
 	in := bufio.NewScanner(os.Stdin)
 	fmt.Println(headerStyleStr("jorin> (Ctrl-D to exit)"))
-	msgs := []Message{{Role: "system", Content: loadSystemPrompt()}}
+	msgs := []types.Message{{Role: "system", Content: loadSystemPrompt()}}
 	for {
 		fmt.Print(promptStyleStr("> "))
 		if !in.Scan() {
@@ -91,7 +93,7 @@ func startREPL(model string, pol *Policy) {
 		if q == "" {
 			continue
 		}
-		msgs = append(msgs, Message{Role: "user", Content: q})
+		msgs = append(msgs, types.Message{Role: "user", Content: q})
 		var out string
 		var err error
 		msgs, out, err = chatSession(model, msgs, pol)
