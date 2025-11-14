@@ -140,7 +140,11 @@ func Registry() map[string]ToolExec {
 			if err != nil {
 				return map[string]any{"error": err.Error()}, nil
 			}
-			defer resp.Body.Close()
+			defer func() {
+				if cerr := resp.Body.Close(); cerr != nil {
+					// best-effort close
+				}
+			}()
 			b, _ := io.ReadAll(io.LimitReader(resp.Body, 8000))
 			return map[string]any{"status": resp.StatusCode, "body": string(b)}, nil
 		},
