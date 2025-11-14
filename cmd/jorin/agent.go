@@ -84,6 +84,9 @@ func startREPL(model string, pol *types.Policy) {
 	in := bufio.NewScanner(os.Stdin)
 	fmt.Println(headerStyleStr("jorin> (Ctrl-D to exit)"))
 	msgs := []types.Message{{Role: "system", Content: loadSystemPrompt()}}
+	// prepare tool registry for local shell execution when REPL input
+	// begins with '!'
+	reg := registry()
 	for {
 		fmt.Print(promptStyleStr("> "))
 		if !in.Scan() {
@@ -91,6 +94,50 @@ func startREPL(model string, pol *types.Policy) {
 		}
 		q := strings.TrimSpace(in.Text())
 		if q == "" {
+			continue
+		}
+		// If input starts with '!' treat it as a local shell command and
+		// execute it according to the provided Policy (allow/deny/dry-run).
+		if strings.HasPrefix(q, "!") {
+			// strip leading '!' and optional whitespace
+			cmdStr := strings.TrimSpace(q[1:])
+			if cmdStr == "" {
+				fmt.Println(infoStyleStr("empty shell command"))
+				continue
+			}
+			if sh, ok := reg["shell"]; ok {
+				res, err := sh(map[string]any{"cmd": cmdStr}, pol)
+				if err != nil {
+					fmt.Println(errorStyleStr("ERR:"), err)
+					continue
+				}
+				// policy/tool-level errors are returned in the map as "error"
+				if e, ok := res["error"]; ok {
+					fmt.Println(errorStyleStr("ERR:"), e)
+					continue
+				}
+				if dr, ok := res["dry_run"].(bool); ok && dr {
+					// Dry run: show the command that would be executed
+					if c, ok := res["cmd"].(string); ok {
+						fmt.Println(infoStyleStr("Dry run:"), c)
+					} else {
+						fmt.Println(infoStyleStr("Dry run: "), cmdStr)
+					}
+					continue
+				}
+				if out, ok := res["stdout"].(string); ok && out != "" {
+					fmt.Println(infoStyleStr(out))
+				}
+				if errb, ok := res["stderr"].(string); ok && errb != "" {
+					fmt.Println(errorStyleStr(errb))
+				}
+				if rc, ok := res["returncode"]; ok {
+					fmt.Println(infoStyleStr("returncode:"), rc)
+				}
+				continue
+			}
+			// fallback if shell tool isn't registered
+			fmt.Println(errorStyleStr("shell tool not available"))
 			continue
 		}
 		msgs = append(msgs, types.Message{Role: "user", Content: q})
