@@ -23,8 +23,14 @@ func TestChatOnceDecodesResponse(t *testing.T) {
 
 	// set OPENAI_BASE_URL to test server URL
 	prev := os.Getenv("OPENAI_BASE_URL")
-	defer os.Setenv("OPENAI_BASE_URL", prev)
-	os.Setenv("OPENAI_BASE_URL", srv.URL)
+	if err := os.Setenv("OPENAI_BASE_URL", srv.URL); err != nil {
+		t.Fatalf("failed to set env: %v", err)
+	}
+	defer func() {
+		if err := os.Setenv("OPENAI_BASE_URL", prev); err != nil {
+			t.Fatalf("failed to restore env: %v", err)
+		}
+	}()
 
 	msgs := []types.Message{{Role: "system", Content: "x"}}
 	resp, err := ChatOnce("model", msgs, nil)
