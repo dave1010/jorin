@@ -12,6 +12,7 @@ This repository contains the source for the `jorin` command-line agent.
 - Requirements
 - Build
 - Usage
+- REPL details
 - Examples
 - Security model and tool permissions
 - Architecture overview
@@ -70,6 +71,51 @@ Key flags
 - --deny (repeatable): Denylist substring for shell commands (any matching substring will deny execution)
 - --cwd: Working directory for tools
 
+## REPL details
+
+jorin provides an interactive REPL with proper line-editing when run from a
+terminal. The REPL adapts to the environment:
+
+- Interactive terminal (tty): you get a full line editor (left/right cursor
+  movement, history navigation with up/down arrows, Ctrl-C to abort input,
+  and in-session history where past inputs are stored for the session).
+- Non-interactive (stdin/stdout are not terminals): the REPL falls back to a
+  simple scanner-based mode suitable for piping and automated tests.
+
+History and persistence
+
+- In interactive mode the REPL automatically loads existing history (if the
+  CLI code was provided a History implementation) so you can use the up arrow
+  to recall previous commands from the same process/session.
+- Lines entered during the session are retained in the interactive editor so
+  you can navigate recent commands without retyping them.
+
+Slash commands and shell escapes
+
+- The REPL supports slash-style commands (default prefix is `/`) which are
+  parsed and dispatched to the built-in command handler. Example: `/help`,
+  `/history`, `/debug`.
+- If you need to start a line with the slash prefix without invoking a
+  command, escape it with a backslash: `\/help` will be sent to the model as
+  the literal `/help`.
+- Legacy support: lines starting with `!` are treated as shell commands and
+  executed via the configured shell tool (subject to policy: --dry-shell,
+  --allow, --deny, --readonly). This behavior is unchanged but remains
+  supported for convenience.
+
+Terminal features
+
+- The REPL uses a proper line editor when both stdin and stdout are terminals.
+  This enables:
+  - Left/right arrow cursor movement
+  - Home/End behavior (if supported by the terminal)
+  - Up/down arrow history navigation
+  - Ctrl-C to abort current input without exiting the REPL
+  - In-session history append so entries are available via up-arrow
+
+- When running in non-interactive modes (piped input or tests), the line
+  editor is not used to keep behavior deterministic and testable.
+
 ## Examples
 
 Start the REPL (also happens if you run the program with no args):
@@ -77,6 +123,8 @@ Start the REPL (also happens if you run the program with no args):
 ```bash
 ./jorin --repl
 ```
+
+Start an interactive session and use arrows to edit or recall previous lines.
 
 Send a single prompt via stdin/pipes (useful in scripts):
 
