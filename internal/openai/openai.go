@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/dave1010/jorin/internal/tools"
 	"github.com/dave1010/jorin/internal/types"
@@ -37,57 +38,95 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 			for _, tc := range cm.ToolCalls {
 				// attempt to unmarshal args so we can display a concise preview
 				var parsedArgs map[string]any
-				if err := json.Unmarshal(tc.Function.Args, &parsedArgs); err != nil {
-					// fallback: show trimmed raw args
-					preview := tools.Preview(string(tc.Function.Args), 200)
-					useColor := false
-					if os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "" && os.Getenv("TERM") != "dumb" {
-						useColor = true
+				parsed := false
+
+				// primary attempt: parse raw JSON into a map
+				if err := json.Unmarshal(tc.Function.Args, &parsedArgs); err == nil {
+					parsed = true
+				} else {
+					// some providers return the function arguments as a JSON string,
+					// e.g. "{\"path\":\"test.txt\"}". Try to unquote and parse
+					// that inner JSON as a fallback.
+					var inner string
+					if err2 := json.Unmarshal(tc.Function.Args, &inner); err2 == nil {
+						if err3 := json.Unmarshal([]byte(inner), &parsedArgs); err3 == nil {
+							parsed = true
+						} else {
+							// heuristic: if inner is a simple string (path/command/url), set
+							// the appropriate key so tools can still be invoked.
+							switch tc.Function.Name {
+							case "shell":
+								parsedArgs = map[string]any{"cmd": inner}
+								parsed = true
+							case "read_file":
+								parsedArgs = map[string]any{"path": inner}
+								parsed = true
+							case "write_file":
+								parsedArgs = map[string]any{"path": inner, "text": ""}
+								parsed = true
+							case "http_get":
+								parsedArgs = map[string]any{"url": inner}
+								parsed = true
+							}
+						}
 					}
-					if useColor {
-						fmt.Fprintln(os.Stderr, "\x1b[36m"+tc.Function.Name+" "+preview+"\x1b[0m")
-					} else {
-						fmt.Fprintln(os.Stderr, tc.Function.Name+" "+preview)
-					}
-					// emit the same error behavior as before
-					msgs = append(msgs, types.Message{
-						Role:       "tool",
-						Name:       tc.Function.Name,
-						ToolCallID: tc.ID,
-						Content:    `{"error":"bad arguments"}`,
-					})
-					continue
 				}
 
 				// build a concise, human-friendly preview based on tool type
 				preview := ""
-				switch tc.Function.Name {
-				case "shell":
-					if c, ok := parsedArgs["cmd"].(string); ok {
-						preview = "$ " + tools.Preview(c, 200)
-					} else {
-						preview = "$ " + tools.Preview(string(tc.Function.Args), 200)
+				var previewRaw string
+				if parsed {
+					// prefer explicit fields from parsed args
+					switch tc.Function.Name {
+					case "shell":
+						if c, ok := parsedArgs["cmd"].(string); ok {
+							preview = "$ " + tools.Preview(c, 200)
+						} else {
+							preview = "$ " + tools.Preview(string(tc.Function.Args), 200)
+						}
+					case "read_file":
+						if p, ok := parsedArgs["path"].(string); ok {
+							preview = "📄 " + p
+						} else {
+							preview = "📄 " + tools.Preview(string(tc.Function.Args), 200)
+						}
+					case "write_file":
+						if p, ok := parsedArgs["path"].(string); ok {
+							preview = "✏️ " + p
+						} else {
+							preview = "✏️ " + tools.Preview(string(tc.Function.Args), 200)
+						}
+					case "http_get":
+						if u, ok := parsedArgs["url"].(string); ok {
+							preview = "🌐 " + u
+						} else {
+							preview = "🌐 " + tools.Preview(string(tc.Function.Args), 200)
+						}
+					default:
+						preview = tc.Function.Name + " " + tools.Preview(string(tc.Function.Args), 200)
 					}
-				case "read_file":
-					if p, ok := parsedArgs["path"].(string); ok {
-						preview = "📄 " + p
+				} else {
+					// parsed failed; try to show a readable raw preview. Attempt to
+					// unquote the raw bytes for readability.
+					var unq string
+					if err := json.Unmarshal(tc.Function.Args, &unq); err == nil {
+						previewRaw = unq
 					} else {
-						preview = "📄 " + tools.Preview(string(tc.Function.Args), 200)
+						previewRaw = strings.TrimSpace(string(tc.Function.Args))
 					}
-				case "write_file":
-					if p, ok := parsedArgs["path"].(string); ok {
-						preview = "✏️ " + p
-					} else {
-						preview = "✏️ " + tools.Preview(string(tc.Function.Args), 200)
+					// show a short preview prefixed by function hint
+					switch tc.Function.Name {
+					case "shell":
+						preview = "$ " + tools.Preview(previewRaw, 200)
+					case "read_file":
+						preview = "📄 " + tools.Preview(previewRaw, 200)
+					case "write_file":
+						preview = "✏️ " + tools.Preview(previewRaw, 200)
+					case "http_get":
+						preview = "🌐 " + tools.Preview(previewRaw, 200)
+					default:
+						preview = tc.Function.Name + " " + tools.Preview(previewRaw, 200)
 					}
-				case "http_get":
-					if u, ok := parsedArgs["url"].(string); ok {
-						preview = "🌐 " + u
-					} else {
-						preview = "🌐 " + tools.Preview(string(tc.Function.Args), 200)
-					}
-				default:
-					preview = tc.Function.Name + " " + tools.Preview(string(tc.Function.Args), 200)
 				}
 
 				// decide whether to emit ANSI colors
@@ -122,7 +161,10 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 					continue
 				}
 
-				// call the tool with the parsed args
+				// call the tool with the parsed args (or best-effort fallback)
+				if !parsed && parsedArgs == nil {
+					parsedArgs = map[string]any{}
+				}
 				out, _ := fn(parsedArgs, pol)
 				b, _ := json.Marshal(out)
 				msgs = append(msgs, types.Message{
