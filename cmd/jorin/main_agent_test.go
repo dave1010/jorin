@@ -32,11 +32,11 @@ func TestRunAgent(t *testing.T) {
 									ID:   "call_123",
 									Type: "function",
 									Function: struct {
-										Name string `json:"name"`
-										Args string `json:"arguments"`
+										Name string          `json:"name"`
+										Args json.RawMessage `json:"arguments"`
 									}{
 										Name: "read_file",
-										Args: `{"path":"test.txt"}`,
+										Args: json.RawMessage(`{"path":"test.txt"}`),
 									},
 								},
 							},
