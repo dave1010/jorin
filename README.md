@@ -76,7 +76,7 @@ For more usage details see docs/.
 - Go toolchain (1.20+ recommended)
 - GNU Make (optional)
 
-## Buildimg
+## Building
 
 Build the CLI:
 
