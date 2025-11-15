@@ -13,24 +13,6 @@ more information.
 - Security and tool permissions: [docs/security.md](docs/security.md)
 - Architecture overview: [docs/architecture.md](docs/architecture.md)
 
-## System prompt extensibility
-
-The system prompt that is sent to the LLM is now built from modular "prompt
-providers". Providers implement a simple interface and can be registered to
-contribute parts of the overall system prompt. This makes it easy to add
-project-specific instructions, runtime context, or plugin-provided guidance
-without modifying core code.
-
-- Providers implement ui.PromptProvider (Provide() string) and are registered
-  in init() functions.
-- Providers are concatenated in registration order with blank lines between
-  sections.
-- Default providers include the immutable base instructions, AGENTS.md (when
-  present), and runtime context (git cwd, OS uname, and tools on PATH).
-
-This is designed for future plugin integration: a plugin can register a
-provider during its init/startup to contribute to the system prompt.
-
 ## Download
 
 Download the latest release for your platform from:

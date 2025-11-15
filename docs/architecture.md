@@ -15,3 +15,21 @@ allow/deny, dry-shell) are evaluated before invoking tools with side effects.
 
 This separation keeps network and filesystem access points concentrated and
 easy to review.
+
+## System prompt extensibility
+
+The system prompt that is sent to the LLM is built from modular "prompt
+providers". Providers implement a simple interface and can be registered to
+contribute parts of the overall system prompt. This makes it easy to add
+project-specific instructions, runtime context, or plugin-provided guidance
+without modifying core code.
+
+- Providers implement ui.PromptProvider (Provide() string) and are registered
+  in init() functions.
+- Providers are concatenated in registration order with blank lines between
+  sections.
+- Default providers include the immutable base instructions, AGENTS.md (when
+  present), and runtime context (git cwd, OS uname, and tools on PATH).
+
+This is designed for future plugin integration: a plugin can register a
+provider during its init/startup to contribute to the system prompt.
