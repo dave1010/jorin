@@ -15,8 +15,25 @@ jobs:
         include:
           - goos: linux
             goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: linux
+            goarch: 386
+          - goos: linux
+            goarch: arm
+            goarm: '7'
+          - goos: darwin
+            goarch: amd64
           - goos: darwin
             goarch: arm64
+          - goos: windows
+            goarch: amd64
+          - goos: windows
+            goarch: 386
+          - goos: android
+            goarch: arm64
+          - goos: freebsd
+            goarch: amd64
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -31,18 +48,25 @@ jobs:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
         run: |
-          echo "Building for $GOOS/$GOARCH"
+          echo "Building for $GOOS/$GOARCH${GOARM:+/arm$GOARM}"
           BINARY=jorin
           mkdir -p dist
-          GOFLAGS="" go build -ldflags "-s -w" -o dist/${BINARY}-${GOOS}-${GOARCH} ./cmd/jorin
+          # Set extension for windows
+          if [ "${GOOS}" = "windows" ]; then
+            EXT=.exe
+          else
+            EXT=
+          fi
+          # Build (if GOARM is empty it will be ignored)
+          GOFLAGS="" GOOS=$GOOS GOARCH=$GOARCH GOARM=$GOARM go build -ldflags "-s -w" -o dist/${BINARY}-${GOOS}-${GOARCH}${EXT} ./cmd/jorin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: jorin-${{ matrix.goos }}-${{ matrix.goarch }}
-          # upload only the built binary file so the artifact root contains the binary
-          path: dist/${{ format('{0}-{1}-{2}', 'jorin', matrix.goos, matrix.goarch) }}
+          path: dist/**
 
   release:
     name: Create GitHub Release
