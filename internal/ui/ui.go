@@ -2,6 +2,7 @@ package ui
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/dave1010/jorin/internal/openai"
 	"github.com/dave1010/jorin/internal/tools"
 	"github.com/dave1010/jorin/internal/types"
+	"github.com/dave1010/jorin/internal/ui/commands"
 )
 
 const systemPromptBase = `You are a coding agent, designed to call tools to complete tasks.
@@ -71,33 +73,58 @@ func runtimeContext() string {
 }
 
 // StartREPL runs an interactive REPL using the provided reader/writer. It is
-// testable because IO is injected. It uses the openai.ChatSession to talk to
-// the model and the tools registry from internal/tools for local actions.
-func StartREPL(model string, pol *types.Policy, in io.Reader, out io.Writer, errOut io.Writer) {
+// testable because IO is injected. It accepts a commands.Handler and a History
+// implementation so command dispatch and history persistence are pluggable.
+func StartREPL(ctx context.Context, model string, pol *types.Policy, in io.Reader, out io.Writer, errOut io.Writer, cfg *Config, handler commands.Handler, hist History) error {
 	scanner := bufio.NewScanner(in)
+	if cfg == nil {
+		cfg = DefaultConfig()
+	}
 	fmt.Fprintln(out, headerStyleStr("jorin> (Ctrl-D to exit)"))
 	msgs := []types.Message{{Role: "system", Content: SystemPrompt()}}
 	reg := tools.Registry()
 	for {
-		fmt.Fprint(out, promptStyleStr("> "))
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		fmt.Fprint(out, promptStyleStr(cfg.Prompt))
 		if !scanner.Scan() {
 			break
 		}
-		q := strings.TrimSpace(scanner.Text())
-		if q == "" {
+		line := scanner.Text()
+		trim := strings.TrimSpace(line)
+		if trim == "" {
 			continue
 		}
-		if strings.HasPrefix(q, "/") {
-			if strings.HasPrefix(q, "/debug") {
-				sp := SystemPrompt()
-				fmt.Fprintln(errOut, infoStyleStr(sp))
+		// attempt to parse as slash command
+		cmd, perr := commands.Parse(trim, cfg.CommandPrefix, cfg.EscapePrefix)
+		if perr == nil {
+			// parsed a command; dispatch to handler
+			handled, err := handler.Handle(ctx, cmd)
+			if err != nil {
+				fmt.Fprintln(errOut, errorStyleStr("ERR:"), err)
 				continue
 			}
-			fmt.Fprintln(errOut, infoStyleStr("unknown command:"), q)
-			continue
+			if handled {
+				// do not forward to model
+				continue
+			}
+			// if not handled, fallthrough and forward command text
+			trim = cmd.Raw
+		} else {
+			// if escaped, Parse returns an error but sets Raw to the unescaped
+			// literal. The parser currently uses an "escaped" error string. If
+			// the parser indicated escaped, use the Raw content. Otherwise it's
+			// not a command and we forward the original trimmed line.
+			if perr.Error() == "escaped" {
+				trim = cmd.Raw
+			}
 		}
-		if strings.HasPrefix(q, "!") {
-			cmdStr := strings.TrimSpace(q[1:])
+		// legacy: support leading '!' shell commands via tools registry
+		if strings.HasPrefix(trim, "!") {
+			cmdStr := strings.TrimSpace(trim[1:])
 			if cmdStr == "" {
 				fmt.Fprintln(errOut, infoStyleStr("empty shell command"))
 				continue
@@ -134,7 +161,11 @@ func StartREPL(model string, pol *types.Policy, in io.Reader, out io.Writer, err
 			fmt.Fprintln(errOut, errorStyleStr("shell tool not available"))
 			continue
 		}
-		msgs = append(msgs, types.Message{Role: "user", Content: q})
+		// forward to model
+		msgs = append(msgs, types.Message{Role: "user", Content: trim})
+		if hist != nil {
+			hist.Add(trim)
+		}
 		var outStr string
 		var err error
 		msgs, outStr, err = openai.ChatSession(model, msgs, pol)
@@ -144,6 +175,7 @@ func StartREPL(model string, pol *types.Policy, in io.Reader, out io.Writer, err
 		}
 		fmt.Fprintln(out, infoStyleStr(outStr))
 	}
+	return nil
 }
 
 // The following helper style functions are duplicated from cmd to avoid a

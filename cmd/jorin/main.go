@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/dave1010/jorin/internal/types"
 	"github.com/dave1010/jorin/internal/ui"
+	cmdcommands "github.com/dave1010/jorin/internal/ui/commands"
 	"github.com/dave1010/jorin/internal/version"
 )
 
@@ -29,14 +31,19 @@ func main() {
 
 	pol := &types.Policy{Readonly: *readonly, DryShell: *dry, Allow: *allow, Deny: *deny, CWD: *cwd}
 
+	// prepare handler and history
+	cfg := ui.DefaultConfig()
+	hist := ui.NewMemHistory(200)
+	handler := cmdcommands.NewDefaultHandler(os.Stdout, os.Stderr, hist)
+
 	// If program invoked with no args at all, behave as if --repl was provided.
 	if len(os.Args) == 1 {
-		ui.StartREPL(*model, pol, os.Stdin, os.Stdout, os.Stderr)
+		ui.StartREPL(context.Background(), *model, pol, os.Stdin, os.Stdout, os.Stderr, cfg, handler, hist)
 		return
 	}
 
 	if *repl {
-		ui.StartREPL(*model, pol, os.Stdin, os.Stdout, os.Stderr)
+		ui.StartREPL(context.Background(), *model, pol, os.Stdin, os.Stdout, os.Stderr, cfg, handler, hist)
 		return
 	}
 
