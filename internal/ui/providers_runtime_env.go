@@ -11,9 +11,9 @@ type envProvider struct{}
 
 func (envProvider) Provide() string {
 	if out, err := exec.Command("uname", "-a").Output(); err == nil {
-		return strings.TrimSpace(string(out))
+		return "Current env: " + strings.TrimSpace(string(out))
 	}
-	return "OS: " + runtime.GOOS + " " + runtime.GOARCH
+	return "Current env: OS: " + runtime.GOOS + " " + runtime.GOARCH
 }
 
 func init() {
