@@ -49,41 +49,154 @@ Priority order (what to do first and why)
 Detailed plan of attack (concrete steps)
 
 Phase 1 — Package refactor and interfaces (foundation)
+COMPLETE
+
 Goal: move towards a modular layout without large behavior changes. Small, review-friendly commits.
-
-Steps:
-1. Audit current package layout and list files that belong to these logical modules:
-   - cmd/jorin (main, CLI bootstrap only)
-   - internal/agent (agent orchestration, conversation state)
-   - internal/openai (API client, model adapter interface)
-   - internal/tools (tool registry, tool interfaces, policy enforcement)
-   - internal/shell (shell runner abstraction; sandboxed execution lives here)
-   - internal/ui (REPL wrapper, startREPL that accepts io.Reader/io.Writer)
-   - internal/config (config loader, XDG handling)
-   - internal/session (persist/load/list/delete session storage)
-   - internal/patch (file-patch helper abstraction)
-   - pkg/skills (optional: SKILLS.md parsing & conversion)
-2. For each module, define a small public interface in code (e.g., tools.Registry, shell.Runner, openai.Client, session.Store). Keep current implementations but adapt them to implement the interfaces.
-3. Make minimal code moves: keep behavior identical, but change package names and import paths. Do this incrementally: move a few files at a time, run go test, make sure builds pass.
-4. Where globals are used (global registries or global config), replace with explicit parameters or simple struct fields to be passed from cmd/jorin main.
-5. Add unit tests for the new interfaces where missing. Example: test policy checks for shell invocation, test read_file/write_file guards.
-
-Acceptance criteria:
-- Project builds with go build ./... and go test ./... after each incremental move.
-- No behavioral change in CLI for end-users. Tests continue to pass.
 
 Phase 2 — REPL & UI improvements and slash commands
 Goal: Make the REPL testable and support slash commands reliably.
 
-Steps:
-1. Refactor startREPL to accept io.Reader and io.Writer (and optional stdin file descriptor wrapper) so it can be driven by tests.
-2. Extract parsing logic for slash commands into a small package (internal/ui/commands) that can parse and dispatch /help, /history, /config, /debug, etc.
-3. Add tests for slash command parsing and ensure that commands are intercepted before sending content to the model; support an escape to send raw leading slash (e.g., "/\" or configurable prefix).
-4. Evaluate lightweight TUI integration decisions but defer full TUI until after stabilization. For now, make plain REPL robust (multi-line support, history using a small library or custom ring buffer). Ensure non-REPL mode still works (stdin piping).
+Overview
 
-Acceptance criteria:
-- startREPL is unit-testable and has tests for slash command handling.
-- REPL behavior is not regressed for normal usage.
+Phase 2 focuses on extracting UI and REPL logic into small, well-tested packages and on adding a small, deterministic slash-command parser & dispatcher. Changes should be behavior-preserving for the default interactive experience while enabling automated tests and future TUI enhancements.
+
+Deliverables
+
+- internal/ui package containing startREPL and minimal REPL primitives
+- internal/ui/commands package that parses and dispatches slash commands
+- Tests for slash command parsing and REPL interactive flows (unit tests only; no heavy terminal dependency)
+- Backwards compatibility: existing CLI behavior (REPL on no-args; piping stdin) remains unchanged
+
+Concrete tasks
+
+1) Refactor startREPL to accept io.Reader and io.Writer
+   - Signature suggestion:
+     func StartREPL(ctx context.Context, in io.Reader, out io.Writer, cfg *ui.Config, commands commands.Handler) error
+   - Rationale: makes startREPL easily driveable by tests. The function may still detect when in/out are terminals to enable history persistence and line-editing.
+   - Implementation notes:
+     - Keep a small adapter that, when in a real terminal, wraps a line-editing library (optional). When in testing mode (non-tty), fall back to simple line-by-line scanning.
+     - For simplicity initially, implement a small line reader using bufio.Reader that supports a configurable multiline delimiter (e.g., \n\n) and optional prompt rendering.
+     - Do not introduce heavy third-party dependencies in this phase; prefer a lightweight wrapper around bufio or optional build-tag gated support for liner/termbox later.
+
+2) Extract slash command parsing into internal/ui/commands
+   - Provide a small, deterministic parser with these characteristics:
+     - Recognizes commands that start with a leading slash (configurable prefix)
+     - Parses command name and whitespace-separated args, and supports quoted args ("double quotes" and 'single quotes')
+     - Exposes a Handler interface for dispatch:
+       type Handler interface {
+           Handle(ctx context.Context, cmd Command) (handled bool, err error)
+       }
+     - Command struct example:
+       type Command struct {
+           Raw string // full line
+           Name string // "help", "history", "config", etc.
+           Args []string
+       }
+     - Leave dispatch semantics to the caller: StartREPL should call commands.Handle before sending content to the model.
+   - Provide a mechanism to escape a leading slash so the user can send messages that start with '/' (e.g., prefix "/\\" becomes "/"). Make the escape configurable and document it.
+
+3) Unit tests for slash-command parsing and handling
+   - Tests for parsing edge-cases:
+     - /help, /history 10, /config set key=value
+     - Leading/trailing whitespace
+     - Quoted arguments: /run "arg with spaces" 'single quoted'
+     - Escaped slash: "/\\help" becomes "/help" text, not a command
+   - Tests for dispatch behavior:
+     - Mock Handler that records calls and returns handled=true for recognized commands
+     - Ensure StartREPL does not forward handled commands to upstream model/agent and instead prints appropriate feedback
+
+4) StartREPL integration tests (unit-level, not terminal)
+   - Use bytes.Buffer for in/out to simulate the terminal session.
+   - Scenarios:
+     - Send normal input -> StartREPL forwards to the agent interface (mock agent) and writes model responses to out
+     - Send a slash command -> commands.Handler handles it and StartREPL does not call agent
+     - Send escaped slash -> StartREPL forwards as normal input
+     - EOF and cancelation via context result in clean shutdown
+   - Keep tests fast; avoid any flaky timing by stubbing model responses and avoiding goroutine sleeps.
+
+5) History and single-file ring buffer
+   - Implement a small, pluggable history store implementing:
+     type History interface {
+         Add(line string)
+         List(limit int) []string
+     }
+   - Provide two implementations:
+     - In-memory ring buffer for tests (e.g., capacity N)
+     - Optional file-backed history (append to file, avoid race conditions); use only when in interactive terminal mode
+   - StartREPL should accept History as a dependency and expose /history to query it.
+
+6) Multi-line support and paste handling
+   - Support a simple convention for multi-line messages used in many REPLs:
+     - A configurable terminator line (e.g., "." on its own, or a double newline) ends input
+     - Alternatively accept single-line mode if the user presses Enter and immediately sends the line
+   - Make multi-line mode configurable through ui.Config so tests can run deterministically
+
+7) Backwards compatibility and non-interactive mode
+   - Ensure piping input (jorin < prompt.txt) still writes to agent once per input chunk
+   - When stdin is not a terminal, StartREPL should read until EOF and then exit after forwarding content
+
+Acceptance criteria (expanded)
+
+- StartREPL is refactored to accept io.Reader/io.Writer/Context and has unit tests covering at least:
+  - Slash command parsing and dispatch
+  - Escaped leading-slash behavior
+  - REPL flows for normal messages and handled commands
+  - History add/list behavior
+- REPL behavior is preserved for normal interactive usage (manual verification) and for piping stdin.
+
+Implementation examples and file layout
+
+Suggested files to add under internal/ui and internal/ui/commands:
+
+internal/ui/repl.go
+- StartREPL implementation, dependency injection for agent, commands.Handler, history, and config.
+
+internal/ui/config.go
+- ui.Config struct (prompt strings, multiline mode, command prefix, escape sequence)
+
+internal/ui/history.go
+- History interface and in-memory implementation used by tests
+
+internal/ui/terminal.go (optional)
+- Small adapter that detects terminal and wraps a line-editing lib when available (keep optional)
+
+internal/ui/commands/parser.go
+- Command parsing logic and tests for edge cases
+
+internal/ui/commands/handler.go
+- Handler interface and built-in handlers for help/history/config/debug commands
+
+Examples (pseudo-code snippets)
+
+- Using StartREPL from cmd/jorin/main.go:
+
+  cfg := ui.DefaultConfig()
+  commands := commands.NewDefaultHandler(...)
+  agent := agent.New(...) // agent implements a simple Chat(ctx, input) -> output
+  if err := ui.StartREPL(ctx, os.Stdin, os.Stdout, cfg, commands, agent); err != nil {
+      log.Fatalf("repl failed: %v", err)
+  }
+
+- Test skeleton for slash parsing:
+
+  func TestParseCommand(t *testing.T) {
+      c := parser.Parse("/run \"arg with spaces\" --flag")
+      if c.Name != "run" { t.Fatalf("name") }
+      if len(c.Args) != 2 { t.Fatalf("args") }
+  }
+
+Migration and compatibility notes
+
+- Keep the existing CLI entrypoint behavior while wiring new StartREPL in a small change: move logic from current cmd/ into the new StartREPL and keep CLI behavior unchanged for users.
+- For history file format, prefer a simple newline-delimited file; do not change the file format later without a migration plan.
+
+PR checklist for Phase 2 changes
+
+- Files added to internal/ui and internal/ui/commands are small and focused
+- Unit tests added for all parsing logic and REPL behaviors
+- No behavior change for default interactive usage (manual smoke test before merge)
+- Documentation updated: README.md contains a short note about slash commands and escaping
+- gofmt run on changed files
 
 Phase 3 — Configuration and CLI subcommands
 Goal: Provide consistent configuration precedence and improved CLI UX.
