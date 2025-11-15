@@ -13,7 +13,14 @@ import (
 
 const systemPrompt = `You are a coding agent, designed to call tools to complete tasks.
 Respond either with a normal assistant message, or with tool calls (function calling).
-Prefer small, auditable steps. Read before you write. Don't suggest extra work.`
+Prefer small, auditable steps. Read before you write. Don't suggest extra work.
+
+## Git
+
+Only run git commands if explicitly asked.
+
+'git add .' is verboten. Always add paths intentionally.
+`
 
 // loadSystemPrompt returns the base system prompt and, if an AGENTS.md file
 // exists in the current working directory, appends its contents preceded by
