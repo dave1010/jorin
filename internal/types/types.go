@@ -16,8 +16,8 @@ type ToolCall struct {
 	ID       string `json:"id"`
 	Type     string `json:"type"` // "function"
 	Function struct {
-		Name string `json:"name"`
-		Args string `json:"arguments"`
+		Name string          `json:"name"`
+		Args json.RawMessage `json:"arguments"`
 	} `json:"function"`
 }
 

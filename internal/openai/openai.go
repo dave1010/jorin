@@ -37,9 +37,9 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 			for _, tc := range cm.ToolCalls {
 				// attempt to unmarshal args so we can display a concise preview
 				var parsedArgs map[string]any
-				if err := json.Unmarshal([]byte(tc.Function.Args), &parsedArgs); err != nil {
+				if err := json.Unmarshal(tc.Function.Args, &parsedArgs); err != nil {
 					// fallback: show trimmed raw args
-					preview := tools.Preview(tc.Function.Args, 200)
+					preview := tools.Preview(string(tc.Function.Args), 200)
 					useColor := false
 					if os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "" && os.Getenv("TERM") != "dumb" {
 						useColor = true
@@ -66,28 +66,28 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 					if c, ok := parsedArgs["cmd"].(string); ok {
 						preview = "$ " + tools.Preview(c, 200)
 					} else {
-						preview = "$ " + tools.Preview(tc.Function.Args, 200)
+						preview = "$ " + tools.Preview(string(tc.Function.Args), 200)
 					}
 				case "read_file":
 					if p, ok := parsedArgs["path"].(string); ok {
 						preview = "📄 " + p
 					} else {
-						preview = "📄 " + tools.Preview(tc.Function.Args, 200)
+						preview = "📄 " + tools.Preview(string(tc.Function.Args), 200)
 					}
 				case "write_file":
 					if p, ok := parsedArgs["path"].(string); ok {
 						preview = "✏️ " + p
 					} else {
-						preview = "✏️ " + tools.Preview(tc.Function.Args, 200)
+						preview = "✏️ " + tools.Preview(string(tc.Function.Args), 200)
 					}
 				case "http_get":
 					if u, ok := parsedArgs["url"].(string); ok {
 						preview = "🌐 " + u
 					} else {
-						preview = "🌐 " + tools.Preview(tc.Function.Args, 200)
+						preview = "🌐 " + tools.Preview(string(tc.Function.Args), 200)
 					}
 				default:
-					preview = tc.Function.Name + " " + tools.Preview(tc.Function.Args, 200)
+					preview = tc.Function.Name + " " + tools.Preview(string(tc.Function.Args), 200)
 				}
 
 				// decide whether to emit ANSI colors
