@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dave1010/jorin/internal/types"
+	"github.com/dave1010/jorin/internal/version"
 )
 
 func main() {
@@ -17,7 +18,13 @@ func main() {
 	allow := multi("allow", "Allowlist substring for shell (repeatable)")
 	deny := multi("deny", "Denylist substring for shell (repeatable)")
 	cwd := flag.String("cwd", "", "Working directory for tools")
+	versionFlag := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
 
 	pol := &types.Policy{Readonly: *readonly, DryShell: *dry, Allow: *allow, Deny: *deny, CWD: *cwd}
 
