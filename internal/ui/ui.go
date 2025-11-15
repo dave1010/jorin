@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -76,7 +75,6 @@ func runtimeContext() string {
 // testable because IO is injected. It accepts a commands.Handler and a History
 // implementation so command dispatch and history persistence are pluggable.
 func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Policy, in io.Reader, out io.Writer, errOut io.Writer, cfg *Config, handler commands.Handler, hist History) error {
-	scanner := bufio.NewScanner(in)
 	if cfg == nil {
 		cfg = DefaultConfig()
 	}
@@ -85,19 +83,31 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 	}
 	msgs := []types.Message{{Role: "system", Content: SystemPrompt()}}
 	reg := tools.Registry()
+
+	// create a LineReader that provides proper terminal editing when possible
+	lr := NewLineReader(in, out)
+	defer lr.Close()
+	if hist != nil {
+		// append previous history so arrow-up works for past sessions
+		lr.AppendHistory(hist.List(0))
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
-		if _, err := fmt.Fprint(out, promptStyleStr(cfg.Prompt)); err != nil {
-			return err
+		line, err := lr.ReadLine(promptStyleStr(cfg.Prompt))
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
+				return werr
+			}
+			continue
 		}
-		if !scanner.Scan() {
-			break
-		}
-		line := scanner.Text()
 		trim := strings.TrimSpace(line)
 		if trim == "" {
 			continue
@@ -151,7 +161,7 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 					}
 					continue
 				}
-				if dr, ok := res["dry_run"].(bool); ok && dr {
+				if dr, _ := res["dry_run"].(bool); dr {
 					if c, ok := res["cmd"].(string); ok {
 						if _, werr := fmt.Fprintln(errOut, infoStyleStr("Dry run:"), c); werr != nil {
 							return werr
@@ -191,10 +201,10 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 			hist.Add(trim)
 		}
 		var outStr string
-		var err error
-		msgs, outStr, err = a.ChatSession(model, msgs, pol)
-		if err != nil {
-			if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
+		var err2 error
+		msgs, outStr, err2 = a.ChatSession(model, msgs, pol)
+		if err2 != nil {
+			if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err2); werr != nil {
 				return werr
 			}
 			continue
