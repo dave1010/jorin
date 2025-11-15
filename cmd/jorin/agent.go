@@ -96,6 +96,21 @@ func startREPL(model string, pol *types.Policy) {
 		if q == "" {
 			continue
 		}
+
+		// Slash commands: bypass the LLM. Start simple: /debug prints the
+		// current system prompt.
+		if strings.HasPrefix(q, "/") {
+			// allow "/debug" or "/debug ..." (ignore extra args for now)
+			if strings.HasPrefix(q, "/debug") {
+				sp := loadSystemPrompt()
+				fmt.Println(infoStyleStr(sp))
+				continue
+			}
+			// unknown slash command
+			fmt.Println(infoStyleStr("unknown command:"), q)
+			continue
+		}
+
 		// If input starts with '!' treat it as a local shell command and
 		// execute it according to the provided Policy (allow/deny/dry-run).
 		if strings.HasPrefix(q, "!") {
