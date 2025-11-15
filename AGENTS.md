@@ -1,4 +1,4 @@
-this is a golang repo
+this is the Jorin agent golang repo
 check README.md for build instructions
 
 if you change code then check it's ok with:

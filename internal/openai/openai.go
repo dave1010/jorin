@@ -35,18 +35,59 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 
 		if len(cm.ToolCalls) > 0 {
 			for _, tc := range cm.ToolCalls {
-				// show which tool is being called (trimmed)
-				preview := tools.Preview(tc.Function.Args, 200)
+				// attempt to unmarshal args so we can display a concise preview
+				var parsedArgs map[string]any
+				if err := json.Unmarshal([]byte(tc.Function.Args), &parsedArgs); err != nil {
+					// fallback: show trimmed raw args
+					preview := tools.Preview(tc.Function.Args, 200)
+					useColor := false
+					if os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "" && os.Getenv("TERM") != "dumb" {
+						useColor = true
+					}
+					if useColor {
+						fmt.Fprintln(os.Stderr, "\x1b[36m"+tc.Function.Name+" "+preview+"\x1b[0m")
+					} else {
+						fmt.Fprintln(os.Stderr, tc.Function.Name+" "+preview)
+					}
+					// emit the same error behavior as before
+					msgs = append(msgs, types.Message{
+						Role:       "tool",
+						Name:       tc.Function.Name,
+						ToolCallID: tc.ID,
+						Content:    `{"error":"bad arguments"}`,
+					})
+					continue
+				}
 
-				// determine prefix based on tool name
-				prefix := tc.Function.Name
+				// build a concise, human-friendly preview based on tool type
+				preview := ""
 				switch tc.Function.Name {
 				case "shell":
-					prefix = "$"
+					if c, ok := parsedArgs["cmd"].(string); ok {
+						preview = "$ " + tools.Preview(c, 200)
+					} else {
+						preview = "$ " + tools.Preview(tc.Function.Args, 200)
+					}
 				case "read_file":
-					prefix = "@"
+					if p, ok := parsedArgs["path"].(string); ok {
+						preview = "📄 " + p
+					} else {
+						preview = "📄 " + tools.Preview(tc.Function.Args, 200)
+					}
 				case "write_file":
-					prefix = "@w"
+					if p, ok := parsedArgs["path"].(string); ok {
+						preview = "✏️ " + p
+					} else {
+						preview = "✏️ " + tools.Preview(tc.Function.Args, 200)
+					}
+				case "http_get":
+					if u, ok := parsedArgs["url"].(string); ok {
+						preview = "🌐 " + u
+					} else {
+						preview = "🌐 " + tools.Preview(tc.Function.Args, 200)
+					}
+				default:
+					preview = tc.Function.Name + " " + tools.Preview(tc.Function.Args, 200)
 				}
 
 				// decide whether to emit ANSI colors
@@ -54,7 +95,6 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 				if os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "" && os.Getenv("TERM") != "dumb" {
 					useColor = true
 				}
-
 				if useColor {
 					col := "\x1b[36m" // default cyan
 					switch tc.Function.Name {
@@ -66,9 +106,9 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 						col = "\x1b[38;5;208m" // orange
 					}
 					reset := "\x1b[0m"
-					fmt.Fprintln(os.Stderr, col+prefix+" "+preview+reset)
+					fmt.Fprintln(os.Stderr, col+preview+reset)
 				} else {
-					fmt.Fprintln(os.Stderr, prefix+" "+preview)
+					fmt.Fprintln(os.Stderr, preview)
 				}
 
 				fn := reg[tc.Function.Name]
@@ -81,17 +121,9 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 					})
 					continue
 				}
-				var args map[string]any
-				if err := json.Unmarshal([]byte(tc.Function.Args), &args); err != nil {
-					msgs = append(msgs, types.Message{
-						Role:       "tool",
-						Name:       tc.Function.Name,
-						ToolCallID: tc.ID,
-						Content:    `{"error":"bad arguments"}`,
-					})
-					continue
-				}
-				out, _ := fn(args, pol)
+
+				// call the tool with the parsed args
+				out, _ := fn(parsedArgs, pol)
 				b, _ := json.Marshal(out)
 				msgs = append(msgs, types.Message{
 					Role:       "tool",

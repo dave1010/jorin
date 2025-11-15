@@ -78,7 +78,7 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 	if cfg == nil {
 		cfg = DefaultConfig()
 	}
-	if _, err := fmt.Fprintln(out, headerStyleStr("jorin> (Ctrl-D to exit)")); err != nil {
+	if _, err := fmt.Fprintln(out, headerStyleStr("jorin\u003e (Ctrl-D to exit)")); err != nil {
 		return err
 	}
 	msgs := []types.Message{{Role: "system", Content: SystemPrompt()}}
@@ -86,7 +86,7 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 
 	// create a LineReader that provides proper terminal editing when possible
 	lr := NewLineReader(in, out)
-	defer lr.Close()
+	defer func() { _ = lr.Close() }()
 	if hist != nil {
 		// append previous history so arrow-up works for past sessions
 		lr.AppendHistory(hist.List(0))
