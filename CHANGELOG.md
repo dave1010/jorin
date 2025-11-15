@@ -4,6 +4,9 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+
+## v0.0.6 — 2025-11-15
+
 - Prompt providers: The system prompt was refactored to be modular. Multiple
   PromptProvider implementations can be registered to contribute parts of the
   system prompt. Default providers include the immutable core instructions,
