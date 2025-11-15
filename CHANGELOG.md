@@ -2,6 +2,15 @@
 
 This file summarizes notable project changes grouped into semantic version-style releases (most recent first).
 
+## v0.0.4 — 2025-11-15
+- Extracted an LLM client interface and introduced a dedicated OpenAI HTTP client implementation to decouple higher-level logic from request/response handling.
+- Improved linting across the codebase: added golangci-lint configuration and Makefile targets, fixed numerous lint issues (checking Write/Setenv errors, ensuring resp.Body.Close is handled, silenced unused warnings in cmd), and tightened tests to validate error handling.
+- REPL: allow running local shell commands when input starts with '!' (respects policy and dry-run modes).
+- cmd: removed an unused chatOnce wrapper while keeping the chatSession wrapper; compacted tool output prefixes and added ANSI color handling for shell/read_file/write_file outputs.
+- Refactor: removed shim types and moved more packages/types into internal packages; added/expanded internal tests to improve coverage.
+- Documentation: added small docs for the OpenAI wrapper and other minor documentation updates.
+- Miscellaneous housekeeping and small fixes.
+
 ## v0.0.3 — 2025-11-14
 - Refactored package layout (moved internal types and OpenAI tools into internal packages).
 - Added and expanded unit tests to improve coverage for core components.
