@@ -48,13 +48,6 @@ Priority order (what to do first and why)
 
 Detailed plan of attack (concrete steps)
 
-Phase 0 — Preparation (quick wins)
-- Add or update CONTRIBUTING.md and a short DEV_GUIDE section in README (if missing) describing:
-  - Build, fmt, test commands and expectations for PRs.
-  - How to run unit tests and run the REPL locally.
-- Ensure Makefile supports fmt, fmt-check, test and build (README already documents these) — update if inconsistent.
-- Add a lightweight CI checklist in the README: run gofmt -w ., go test ./..., golangci-lint (if used).
-
 Phase 1 — Package refactor and interfaces (foundation)
 Goal: move towards a modular layout without large behavior changes. Small, review-friendly commits.
 
