@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    # Trigger on tag pushes. Adjust pattern as needed (e.g. 'v*.*.*')
+    tags:
+      - '**'
+
+jobs:
+  build:
+    name: Build binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+
+      - name: Build
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          echo "Building for $GOOS/$GOARCH"
+          BINARY=jorin
+          mkdir -p dist
+          GOFLAGS="" go build -ldflags "-s -w" -o dist/${BINARY}-${GOOS}-${GOARCH} ./cmd/jorin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jorin-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # upload every file in dist/
+          files: |
+            dist/*
+          # make the release name/tag the pushed tag
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
