@@ -2,6 +2,8 @@ package types
 
 import "encoding/json"
 
+// Messages and tool types
+
 type Message struct {
 	Role       string     `json:"role"`
 	Content    string     `json:"content,omitempty"`
@@ -54,4 +56,10 @@ type Policy struct {
 	Allow    []string
 	Deny     []string
 	CWD      string
+}
+
+// Agent is the minimal interface used by the UI to interact with an LLM
+// backend. Implementations (e.g., internal/agent) should satisfy this.
+type Agent interface {
+	ChatSession(model string, msgs []Message, pol *Policy) ([]Message, string, error)
 }

@@ -10,13 +10,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/dave1010/jorin/internal/openai"
+	"github.com/dave1010/jorin/internal/agent"
 	"github.com/dave1010/jorin/internal/tools"
 	"github.com/dave1010/jorin/internal/types"
 	"github.com/dave1010/jorin/internal/ui/commands"
 )
 
-const systemPromptBase = `You are a coding agent, designed to call tools to complete tasks.
+const systemPromptBase = `You are a coding agent, designed to complete tasks.
 Respond either with a normal assistant message, or with tool calls (function calling).
 Prefer small, auditable steps. Read before you write. Don't suggest extra work.
 
@@ -75,7 +75,7 @@ func runtimeContext() string {
 // StartREPL runs an interactive REPL using the provided reader/writer. It is
 // testable because IO is injected. It accepts a commands.Handler and a History
 // implementation so command dispatch and history persistence are pluggable.
-func StartREPL(ctx context.Context, model string, pol *types.Policy, in io.Reader, out io.Writer, errOut io.Writer, cfg *Config, handler commands.Handler, hist History) error {
+func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Policy, in io.Reader, out io.Writer, errOut io.Writer, cfg *Config, handler commands.Handler, hist History) error {
 	scanner := bufio.NewScanner(in)
 	if cfg == nil {
 		cfg = DefaultConfig()
@@ -161,14 +161,14 @@ func StartREPL(ctx context.Context, model string, pol *types.Policy, in io.Reade
 			fmt.Fprintln(errOut, errorStyleStr("shell tool not available"))
 			continue
 		}
-		// forward to model
+		// forward to model via agent interface
 		msgs = append(msgs, types.Message{Role: "user", Content: trim})
 		if hist != nil {
 			hist.Add(trim)
 		}
 		var outStr string
 		var err error
-		msgs, outStr, err = openai.ChatSession(model, msgs, pol)
+		msgs, outStr, err = a.ChatSession(model, msgs, pol)
 		if err != nil {
 			fmt.Fprintln(errOut, errorStyleStr("ERR:"), err)
 			continue
