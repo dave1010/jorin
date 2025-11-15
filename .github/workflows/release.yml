@@ -41,7 +41,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jorin-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/*
+          # upload only the built binary file so the artifact root contains the binary
+          path: dist/${{ format('{0}-{1}-{2}', 'jorin', matrix.goos, matrix.goarch) }}
 
   release:
     name: Create GitHub Release
@@ -58,9 +59,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          # upload every file in dist/
+          # upload every file in dist/ including nested files (download-artifact places artifacts in subfolders)
           files: |
-            dist/*
+            dist/**
           # make the release name/tag the pushed tag
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
