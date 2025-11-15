@@ -13,8 +13,6 @@ import (
 	"github.com/dave1010/jorin/internal/tools"
 	"github.com/dave1010/jorin/internal/types"
 	"github.com/dave1010/jorin/internal/ui/commands"
-	"github.com/mattn/go-isatty"
-	"golang.org/x/term"
 )
 
 const systemPromptBase = `You are a coding agent, designed to complete tasks.
@@ -204,79 +202,15 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 		}
 		var outStr string
 		var err2 error
-
-		// Run the agent call in a goroutine so we can return early if the
-		// user presses Escape. The agent interface accepts a context so
-		// cancellation can be propagated to the LLM client.
-		msgsCopy := make([]types.Message, len(msgs))
-		copy(msgsCopy, msgs)
-		resCh := make(chan struct {
-			msgs []types.Message
-			out  string
-			err  error
-		}, 1)
-
-		callCtx, cancel := context.WithCancel(ctx)
-		go func() {
-			m, o, e := a.ChatSession(callCtx, model, msgsCopy, pol)
-			resCh <- struct {
-				msgs []types.Message
-				out  string
-				err  error
-			}{msgs: m, out: o, err: e}
-		}()
-
-		// monitor for escape key if running in a terminal. If ESC is
-		// pressed we cancel the call context so the LLM client can abort.
-		escCh := make(chan struct{})
-		if fi, ok := in.(*os.File); ok {
-			if isatty.IsTerminal(fi.Fd()) {
-				// spawn a goroutine that reads raw bytes and signals on escCh
-				go func() {
-					oldState, err := makeRaw(int(fi.Fd()))
-					if err != nil {
-						close(escCh)
-						return
-					}
-					defer restore(int(fi.Fd()), oldState)
-					buf := make([]byte, 1)
-					for {
-						n, err := fi.Read(buf)
-						if err != nil || n == 0 {
-							close(escCh)
-							return
-						}
-						if buf[0] == 27 { // ESC
-							close(escCh)
-							return
-						}
-					}
-				}()
-			}
-		}
-
-		select {
-		case r := <-resCh:
-			// agent finished normally; adopt returned messages and print
-			defer cancel()
-			msgs = r.msgs
-			outStr, err2 = r.out, r.err
-			if err2 != nil {
-				if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err2); werr != nil {
-					return werr
-				}
-				continue
-			}
-			if _, werr := fmt.Fprintln(out, infoStyleStr(outStr)); werr != nil {
-				return werr
-			}
-		case <-escCh:
-			// user pressed ESC; cancel the agent call and return to prompt.
-			cancel()
-			if _, werr := fmt.Fprintln(errOut, infoStyleStr("aborted by ESC")); werr != nil {
+		msgs, outStr, err2 = a.ChatSession(model, msgs, pol)
+		if err2 != nil {
+			if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err2); werr != nil {
 				return werr
 			}
 			continue
+		}
+		if _, werr := fmt.Fprintln(out, infoStyleStr(outStr)); werr != nil {
+			return werr
 		}
 	}
 	return nil
@@ -289,15 +223,3 @@ func headerStyleStr(s string) string { return s }
 func promptStyleStr(s string) string { return s }
 func infoStyleStr(s string) string   { return s }
 func errorStyleStr(s string) string  { return s }
-
-// makeRaw/restore use golang.org/x/term to toggle raw mode when available.
-func makeRaw(fd int) (*term.State, error) {
-	return term.MakeRaw(fd)
-}
-
-func restore(fd int, state *term.State) error {
-	if state == nil {
-		return nil
-	}
-	return term.Restore(fd, state)
-}

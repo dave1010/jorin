@@ -1,7 +1,6 @@
 package openai
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,15 +13,15 @@ import (
 // ChatOnce is a convenience wrapper that delegates to the package-level
 // DefaultLLM implementation. Callers can swap DefaultLLM for a different
 // provider in tests or to support other LLMs.
-func ChatOnce(ctx context.Context, model string, msgs []types.Message, toolsList []types.Tool) (*types.ChatResponse, error) {
-	return DefaultLLM.ChatOnce(ctx, model, msgs, toolsList)
+func ChatOnce(model string, msgs []types.Message, toolsList []types.Tool) (*types.ChatResponse, error) {
+	return DefaultLLM.ChatOnce(model, msgs, toolsList)
 }
 
-func ChatSession(ctx context.Context, model string, msgs []types.Message, pol *types.Policy) ([]types.Message, string, error) {
+func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types.Message, string, error) {
 	toolsList := tools.ToolsManifest()
 	reg := tools.Registry()
 	for i := 0; i < 100; i++ {
-		resp, err := ChatOnce(ctx, model, msgs, toolsList)
+		resp, err := ChatOnce(model, msgs, toolsList)
 		if err != nil {
 			return msgs, "", err
 		}

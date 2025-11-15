@@ -14,7 +14,7 @@ import (
 // minimal mock agent that echoes last user message
 type mockAgent struct{}
 
-func (m *mockAgent) ChatSession(ctx context.Context, model string, msgs []types.Message, pol *types.Policy) ([]types.Message, string, error) {
+func (m *mockAgent) ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types.Message, string, error) {
 	if len(msgs) == 0 {
 		return msgs, "", nil
 	}

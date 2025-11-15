@@ -1,14 +1,11 @@
 package openai
 
-import (
-	"context"
-	"github.com/dave1010/jorin/internal/types"
-)
+import "github.com/dave1010/jorin/internal/types"
 
-// DefaultAgent implements agent.Agent by delegating to package-level
-// ChatSession and accepting a context for cancellation.
+// DefaultAgent implements types.Agent by delegating to package-level
+// ChatSession.
 type DefaultAgent struct{}
 
-func (a *DefaultAgent) ChatSession(ctx context.Context, model string, msgs []types.Message, pol *types.Policy) ([]types.Message, string, error) {
-	return ChatSession(ctx, model, msgs, pol)
+func (a *DefaultAgent) ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types.Message, string, error) {
+	return ChatSession(model, msgs, pol)
 }
