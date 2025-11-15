@@ -4,6 +4,11 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- Internal: Introduced context-aware cancellation across the agent and OpenAI client interfaces. The Agent/LLM ChatSession/ChatOnce APIs now accept context.Context and package adapters/implementations were updated to propagate contexts. The HTTP client now uses http.NewRequestWithContext so in-flight requests can be canceled.
+- REPL / UI: docs/usage.md updated to document that pressing ESC while the agent is running aborts the current request and immediately returns to the prompt (the background request continues but its output is ignored).
+- API: openai adapter and DefaultAgent changed to accept contexts; agent interface updated accordingly.
+- Build: bumped Go version to 1.24.0 and updated indirect dependencies (golang.org/x/sys v0.38.0, golang.org/x/term v0.37.0).
+
 ## v0.0.5 — 2025-11-15
 
 - REPL: Added proper interactive line editing when running in a terminal. The REPL now uses a real line editor to provide left/right cursor movement, up/down history navigation, in-session history, and Ctrl-C abort support. When stdin/stdout are not terminals the REPL falls back to the previous scanner-based behavior for deterministic, testable input.
@@ -12,11 +17,11 @@ This file summarizes notable project changes grouped into semantic version-style
 - Tests: ensure existing tests still pass with the new line reader (scanner fallback preserved for non-ttys).
 
 - Roadmap update: Phase 1 (package refactor and interfaces) marked COMPLETE.
-- Phase 2 (REPL & UI improvements) partially implemented. Completed items added to ROADMAP-PLAN.md and include:
+- Phase 2 (REPL  UI improvements) partially implemented. Completed items added to ROADMAP-PLAN.md and include:
   - internal/ui package with StartREPL supporting injected io.Reader/io.Writer and a Context-aware agent interface.
   - internal/ui/commands package with a deterministic slash-command parser (quoted args, escape prefix) and a Handler interface.
   - In-memory history implementation (internal/ui/history) and a default command handler supporting /help, /history and /debug.
-  - REPL wiring: command parsing & dispatch, escape-prefix handling, forwarding to agent, and basic tools registry support for leading '!' shell commands.
+  - REPL wiring: command parsing  dispatch, escape-prefix handling, forwarding to agent, and basic tools registry support for leading '!' shell commands.
   - Unit tests covering command parsing and basic REPL flows.
 
 ## v0.0.4 — 2025-11-15
