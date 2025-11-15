@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 )
 
 // History is a lightweight local interface used by handlers. It is purposely
@@ -29,6 +30,34 @@ type defaultHandler struct {
 	hist   History
 }
 
+var helpTopics = map[string]string{
+	"repl": `repl - editing tips
+
+The REPL provides a simple line editor. Here are some tips for editing multi-line
+or longer text:
+
+- To enter multiple lines, use your terminal's line continuation (e.g. write
+  a sentence and press Enter). The REPL treats each submitted line as a new
+  prompt to the agent. If you want to provide a single multi-line message to
+  the agent, you can paste the full block into the prompt and submit once.
+
+- Use the arrow keys (Up/Down) to navigate your history of previous inputs.
+  If the program was started with a history configured, past sessions will be
+  available as well.
+
+- To include literal leading slashes (e.g. to start your message with
+  "/help"), prefix with an escape character defined in the config (by
+  default the REPL attempts to detect escapes). If you find your leading
+  slash is interpreted as a command, try escaping it.
+
+- For shell commands, you can invoke them with a leading '!' (for example
+  '!ls -la'). This uses the configured shell tool. Be cautious with destructive
+  commands.
+
+- Use /history to review recent inputs, and /help repl to show this topic again.
+`,
+}
+
 func (d *defaultHandler) Handle(ctx context.Context, cmd Command) (bool, error) {
 	switch cmd.Name {
 	case "debug":
@@ -38,8 +67,38 @@ func (d *defaultHandler) Handle(ctx context.Context, cmd Command) (bool, error) 
 		}
 		return true, nil
 	case "help":
-		if _, err := fmt.Fprintln(d.out, "Available commands: /help, /history [n], /debug"); err != nil {
+		// If a specific topic was requested, show it. Otherwise list commands
+		// and available help topics.
+		if len(cmd.Args) > 0 {
+			topic := strings.ToLower(cmd.Args[0])
+			if content, ok := helpTopics[topic]; ok {
+				if _, err := fmt.Fprintln(d.out, content); err != nil {
+					return false, err
+				}
+				return true, nil
+			}
+			if _, err := fmt.Fprintln(d.errOut, "unknown help topic:", topic); err != nil {
+				return false, err
+			}
+			// fallthrough to list available topics
+		}
+		if _, err := fmt.Fprintln(d.out, "Available commands: /help [topic], /history [n], /debug"); err != nil {
 			return false, err
+		}
+		// list help topics
+		topics := []string{}
+		for k := range helpTopics {
+			topics = append(topics, k)
+		}
+		if len(topics) > 0 {
+			if _, err := fmt.Fprintln(d.out, "Help topics:"); err != nil {
+				return false, err
+			}
+			for _, t := range topics {
+				if _, err := fmt.Fprintln(d.out, "  "+t); err != nil {
+					return false, err
+				}
+			}
 		}
 		return true, nil
 	case "history":
