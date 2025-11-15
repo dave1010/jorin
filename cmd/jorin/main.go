@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dave1010/jorin/internal/types"
+	"github.com/dave1010/jorin/internal/ui"
 	"github.com/dave1010/jorin/internal/version"
 )
 
@@ -30,12 +31,12 @@ func main() {
 
 	// If program invoked with no args at all, behave as if --repl was provided.
 	if len(os.Args) == 1 {
-		startREPL(*model, pol)
+		ui.StartREPL(*model, pol, os.Stdin, os.Stdout, os.Stderr)
 		return
 	}
 
 	if *repl {
-		startREPL(*model, pol)
+		ui.StartREPL(*model, pol, os.Stdin, os.Stdout, os.Stderr)
 		return
 	}
 
