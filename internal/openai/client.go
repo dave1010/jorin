@@ -49,11 +49,7 @@ func (o openAIClient) ChatOnce(model string, msgs []types.Message, toolsList []t
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if cerr := resp.Body.Close(); cerr != nil {
-			// best-effort close; nothing useful to do here
-		}
-	}()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("API %d: %s", resp.StatusCode, string(b))

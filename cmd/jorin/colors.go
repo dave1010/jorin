@@ -68,3 +68,8 @@ func promptStyleStr(s string) string { return colorize(stylePrompt, s) }
 func headerStyleStr(s string) string { return colorize(styleHeader, s) }
 func infoStyleStr(s string) string   { return colorize(styleInfo, s) }
 func errorStyleStr(s string) string  { return colorize(styleError, s) }
+
+// Prevent "unused" linter errors for styles and helper functions that may
+// currently be unused but are kept for readability and future use.
+var _ = []interface{}{styleBold, styleRed, styleGreen, styleYellow, styleBlue, styleCyan, stylePrompt, styleHeader, styleInfo, styleError}
+var _ = []interface{}{bold, red, green, yellow, blue, cyan, promptStyleStr, headerStyleStr, infoStyleStr, errorStyleStr}

@@ -16,7 +16,9 @@ func TestChatOnceDecodesResponse(t *testing.T) {
 		w.WriteHeader(200)
 		resp := types.ChatResponse{Choices: []types.Choice{{Message: types.Message{Role: "assistant", Content: "ok"}}}}
 		b, _ := json.Marshal(resp)
-		w.Write(b)
+		if _, err := w.Write(b); err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
 	}
 	srv := httptest.NewServer(http.HandlerFunc(h))
 	defer srv.Close()

@@ -67,9 +67,8 @@ func TestRegistryReadWriteAndShell(t *testing.T) {
 	// shell allow when allow list present
 	polA := &types.Policy{Allow: []string{"ALLOW_ME"}}
 	outS, _ = r["shell"](map[string]any{"cmd": "run ALLOW_ME command"}, polA)
-	if outS["dry_run"] == true {
-		// not dry run here
-	}
+	// not expecting a dry_run here; just ensure it returned without error
+	_ = outS
 	// command not allowed
 	outS, _ = r["shell"](map[string]any{"cmd": "nope"}, polA)
 	if outS["error"] != "not allowed by policy" {

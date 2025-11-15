@@ -86,7 +86,9 @@ func TestReadFileLargeAndWriteFileBytes(t *testing.T) {
 func TestHttpGetTool(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		w.Write([]byte("pong"))
+		if _, err := w.Write([]byte("pong")); err != nil {
+			return
+		}
 	}))
 	defer srv.Close()
 
@@ -124,10 +126,7 @@ func TestShellPolicyAllowDenyDryAndCWD(t *testing.T) {
 	}
 
 	// allow list present requires allowed substring
-	out, _ = shell(map[string]any{"cmd": "run ALLOW_ME now"}, &types.Policy{Allow: []string{"ALLOW_ME"}})
-	if _, ok := out["dry_run"]; ok {
-		// dry_run not set; ok
-	}
+	_, _ = shell(map[string]any{"cmd": "run ALLOW_ME now"}, &types.Policy{Allow: []string{"ALLOW_ME"}})
 	out, _ = shell(map[string]any{"cmd": "nope"}, &types.Policy{Allow: []string{"ALLOW_ME"}})
 	if out["error"] != "not allowed by policy" {
 		t.Fatalf("expected not allowed by policy, got %#v", out)
@@ -170,8 +169,7 @@ func TestShellPolicyAllowDenyDryAndCWD(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 	// run from tmp dir
-	out, err = shell(map[string]any{"cmd": "./writecwd.sh"}, &types.Policy{CWD: tmp})
-	if err != nil {
+	if _, err = shell(map[string]any{"cmd": "./writecwd.sh"}, &types.Policy{CWD: tmp}); err != nil {
 		t.Fatalf("shell CWD exec failed: %v", err)
 	}
 	// read out file
@@ -188,7 +186,9 @@ func TestHttpGetTimeout(t *testing.T) {
 	// server that delays
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
-		w.Write([]byte("late"))
+		if _, err := w.Write([]byte("late")); err != nil {
+			return
+		}
 	}))
 	defer srv.Close()
 

@@ -54,7 +54,10 @@ func TestReadWriteHttpAndDryShell(t *testing.T) {
 
 	// http_get with test server
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("pong"))
+		if _, err := w.Write([]byte("pong")); err != nil {
+			// writing response failed; abort test
+			return
+		}
 	}))
 	defer srv.Close()
 	outH, err := r["http_get"](map[string]any{"url": srv.URL}, &types.Policy{})
@@ -91,8 +94,7 @@ func TestReadWriteHttpAndDryShell(t *testing.T) {
 	if err := os.WriteFile(script, []byte("#!/bin/sh\necho -n $(pwd) > outpwd"), 0o755); err != nil {
 		t.Fatalf("write script: %v", err)
 	}
-	outS, err = r["shell"](map[string]any{"cmd": "./pw.sh"}, &types.Policy{CWD: tmp})
-	if err != nil {
+	if _, err = r["shell"](map[string]any{"cmd": "./pw.sh"}, &types.Policy{CWD: tmp}); err != nil {
 		t.Fatalf("shell CWD failed: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(tmp, "outpwd"))
@@ -106,7 +108,9 @@ func TestReadWriteHttpAndDryShell(t *testing.T) {
 	// http_get timeout shorter server
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
-		w.Write([]byte("late"))
+		if _, err := w.Write([]byte("late")); err != nil {
+			return
+		}
 	}))
 	defer srv2.Close()
 	start := time.Now()
