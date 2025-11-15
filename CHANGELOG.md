@@ -2,6 +2,15 @@
 
 This file summarizes notable project changes grouped into semantic version-style releases (most recent first).
 
+## Unreleased
+- Roadmap update: Phase 1 (package refactor and interfaces) marked COMPLETE.
+- Phase 2 (REPL & UI improvements) partially implemented. Completed items added to ROADMAP-PLAN.md and include:
+  - internal/ui package with StartREPL supporting injected io.Reader/io.Writer and a Context-aware agent interface.
+  - internal/ui/commands package with a deterministic slash-command parser (quoted args, escape prefix) and a Handler interface.
+  - In-memory history implementation (internal/ui/history) and a default command handler supporting /help, /history and /debug.
+  - REPL wiring: command parsing & dispatch, escape-prefix handling, forwarding to agent, and basic tools registry support for leading '!' shell commands.
+  - Unit tests covering command parsing and basic REPL flows.
+
 ## v0.0.4 — 2025-11-15
 - Extracted an LLM client interface and introduced a dedicated OpenAI HTTP client implementation to decouple higher-level logic from request/response handling.
 - Improved linting across the codebase: added golangci-lint configuration and Makefile targets, fixed numerous lint issues (checking Write/Setenv errors, ensuring resp.Body.Close is handled, silenced unused warnings in cmd), and tightened tests to validate error handling.

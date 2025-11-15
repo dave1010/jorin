@@ -1,4 +1,4 @@
-JORIN ROADMAP & REFACTOR PLAN
+JORIN ROADMAP  REFACTOR PLAN
 
 Purpose
 
@@ -53,150 +53,23 @@ COMPLETE
 
 Goal: move towards a modular layout without large behavior changes. Small, review-friendly commits.
 
-Phase 2 — REPL & UI improvements and slash commands
-Goal: Make the REPL testable and support slash commands reliably.
+Phase 2 — REPL  UI improvements and slash commands
 
 Overview
 
-Phase 2 focuses on extracting UI and REPL logic into small, well-tested packages and on adding a small, deterministic slash-command parser & dispatcher. Changes should be behavior-preserving for the default interactive experience while enabling automated tests and future TUI enhancements.
+Phase 2 focuses on extracting UI and REPL logic into small, well-tested packages and on adding a small, deterministic slash-command parser  dispatcher. Changes should be behavior-preserving for the default interactive experience while enabling automated tests and future TUI enhancements.
 
-Deliverables
+Remaining tasks for Phase 2
 
-- internal/ui package containing startREPL and minimal REPL primitives
-- internal/ui/commands package that parses and dispatches slash commands
-- Tests for slash command parsing and REPL interactive flows (unit tests only; no heavy terminal dependency)
-- Backwards compatibility: existing CLI behavior (REPL on no-args; piping stdin) remains unchanged
+- Add more comprehensive unit/integration tests for StartREPL flows (mock agent to validate forwarding and error handling across more scenarios).
+- Implement optional terminal adapter and line-editing support for interactive sessions (currently StartREPL uses bufio.Scanner; consider optional build-tag gated support for advanced line-editing later).
+- File-backed history persistence (use only for interactive terminal mode) and history format documentation.
+- Multi-line input and paste handling with a configurable terminator (optional; make deterministic for tests).
+- Documentation updates in README.md about slash commands and escaping conventions.
 
-Concrete tasks
+Notes on scope
 
-1) Refactor startREPL to accept io.Reader and io.Writer
-   - Signature suggestion:
-     func StartREPL(ctx context.Context, in io.Reader, out io.Writer, cfg *ui.Config, commands commands.Handler) error
-   - Rationale: makes startREPL easily driveable by tests. The function may still detect when in/out are terminals to enable history persistence and line-editing.
-   - Implementation notes:
-     - Keep a small adapter that, when in a real terminal, wraps a line-editing library (optional). When in testing mode (non-tty), fall back to simple line-by-line scanning.
-     - For simplicity initially, implement a small line reader using bufio.Reader that supports a configurable multiline delimiter (e.g., \n\n) and optional prompt rendering.
-     - Do not introduce heavy third-party dependencies in this phase; prefer a lightweight wrapper around bufio or optional build-tag gated support for liner/termbox later.
-
-2) Extract slash command parsing into internal/ui/commands
-   - Provide a small, deterministic parser with these characteristics:
-     - Recognizes commands that start with a leading slash (configurable prefix)
-     - Parses command name and whitespace-separated args, and supports quoted args ("double quotes" and 'single quotes')
-     - Exposes a Handler interface for dispatch:
-       type Handler interface {
-           Handle(ctx context.Context, cmd Command) (handled bool, err error)
-       }
-     - Command struct example:
-       type Command struct {
-           Raw string // full line
-           Name string // "help", "history", "config", etc.
-           Args []string
-       }
-     - Leave dispatch semantics to the caller: StartREPL should call commands.Handle before sending content to the model.
-   - Provide a mechanism to escape a leading slash so the user can send messages that start with '/' (e.g., prefix "/\\" becomes "/"). Make the escape configurable and document it.
-
-3) Unit tests for slash-command parsing and handling
-   - Tests for parsing edge-cases:
-     - /help, /history 10, /config set key=value
-     - Leading/trailing whitespace
-     - Quoted arguments: /run "arg with spaces" 'single quoted'
-     - Escaped slash: "/\\help" becomes "/help" text, not a command
-   - Tests for dispatch behavior:
-     - Mock Handler that records calls and returns handled=true for recognized commands
-     - Ensure StartREPL does not forward handled commands to upstream model/agent and instead prints appropriate feedback
-
-4) StartREPL integration tests (unit-level, not terminal)
-   - Use bytes.Buffer for in/out to simulate the terminal session.
-   - Scenarios:
-     - Send normal input -> StartREPL forwards to the agent interface (mock agent) and writes model responses to out
-     - Send a slash command -> commands.Handler handles it and StartREPL does not call agent
-     - Send escaped slash -> StartREPL forwards as normal input
-     - EOF and cancelation via context result in clean shutdown
-   - Keep tests fast; avoid any flaky timing by stubbing model responses and avoiding goroutine sleeps.
-
-5) History and single-file ring buffer
-   - Implement a small, pluggable history store implementing:
-     type History interface {
-         Add(line string)
-         List(limit int) []string
-     }
-   - Provide two implementations:
-     - In-memory ring buffer for tests (e.g., capacity N)
-     - Optional file-backed history (append to file, avoid race conditions); use only when in interactive terminal mode
-   - StartREPL should accept History as a dependency and expose /history to query it.
-
-6) Multi-line support and paste handling
-   - Support a simple convention for multi-line messages used in many REPLs:
-     - A configurable terminator line (e.g., "." on its own, or a double newline) ends input
-     - Alternatively accept single-line mode if the user presses Enter and immediately sends the line
-   - Make multi-line mode configurable through ui.Config so tests can run deterministically
-
-7) Backwards compatibility and non-interactive mode
-   - Ensure piping input (jorin < prompt.txt) still writes to agent once per input chunk
-   - When stdin is not a terminal, StartREPL should read until EOF and then exit after forwarding content
-
-Acceptance criteria (expanded)
-
-- StartREPL is refactored to accept io.Reader/io.Writer/Context and has unit tests covering at least:
-  - Slash command parsing and dispatch
-  - Escaped leading-slash behavior
-  - REPL flows for normal messages and handled commands
-  - History add/list behavior
-- REPL behavior is preserved for normal interactive usage (manual verification) and for piping stdin.
-
-Implementation examples and file layout
-
-Suggested files to add under internal/ui and internal/ui/commands:
-
-internal/ui/repl.go
-- StartREPL implementation, dependency injection for agent, commands.Handler, history, and config.
-
-internal/ui/config.go
-- ui.Config struct (prompt strings, multiline mode, command prefix, escape sequence)
-
-internal/ui/history.go
-- History interface and in-memory implementation used by tests
-
-internal/ui/terminal.go (optional)
-- Small adapter that detects terminal and wraps a line-editing lib when available (keep optional)
-
-internal/ui/commands/parser.go
-- Command parsing logic and tests for edge cases
-
-internal/ui/commands/handler.go
-- Handler interface and built-in handlers for help/history/config/debug commands
-
-Examples (pseudo-code snippets)
-
-- Using StartREPL from cmd/jorin/main.go:
-
-  cfg := ui.DefaultConfig()
-  commands := commands.NewDefaultHandler(...)
-  agent := agent.New(...) // agent implements a simple Chat(ctx, input) -> output
-  if err := ui.StartREPL(ctx, os.Stdin, os.Stdout, cfg, commands, agent); err != nil {
-      log.Fatalf("repl failed: %v", err)
-  }
-
-- Test skeleton for slash parsing:
-
-  func TestParseCommand(t *testing.T) {
-      c := parser.Parse("/run \"arg with spaces\" --flag")
-      if c.Name != "run" { t.Fatalf("name") }
-      if len(c.Args) != 2 { t.Fatalf("args") }
-  }
-
-Migration and compatibility notes
-
-- Keep the existing CLI entrypoint behavior while wiring new StartREPL in a small change: move logic from current cmd/ into the new StartREPL and keep CLI behavior unchanged for users.
-- For history file format, prefer a simple newline-delimited file; do not change the file format later without a migration plan.
-
-PR checklist for Phase 2 changes
-
-- Files added to internal/ui and internal/ui/commands are small and focused
-- Unit tests added for all parsing logic and REPL behaviors
-- No behavior change for default interactive usage (manual smoke test before merge)
-- Documentation updated: README.md contains a short note about slash commands and escaping
-- gofmt run on changed files
+The intention here is to keep Phase 2 focused and incremental: the codebase already contains the core parser, handler, StartREPL wiring, and a simple history implementation. Remaining work should focus on test coverage, persistence, and optional UX improvements.
 
 Phase 3 — Configuration and CLI subcommands
 Goal: Provide consistent configuration precedence and improved CLI UX.
@@ -238,7 +111,7 @@ Goal: Persist sessions for resume/list/delete features.
 
 Steps:
 1. Implement internal/session.Store interface with file-backed implementations (JSON, or simple directory of metadata + message files). Use XDG config/ state dirs for storage defaults.
-2. Add session metadata (timestamp, model, config snapshot, root working dir). Provide CLI subcommands: sessions list, sessions view <id>, sessions resume <id>, sessions delete <id>.
+2. Add session metadata (timestamp, model, config snapshot, root working dir). Provide CLI subcommands: sessions list, sessions view id, sessions resume id, sessions delete id.
 3. Ensure session I/O is abstracted so tests can use an in-memory store.
 4. Document session storage location and format (update README and add examples).
 
@@ -246,7 +119,7 @@ Acceptance criteria:
 - sessions subcommands functional and covered by tests for store behavior.
 - Session files are stored in configured location with clear metadata layout.
 
-Phase 6 — File patch tool & SKILLS.md support
+Phase 6 — File patch tool  SKILLS.md support
 Goal: Replace the ad-hoc patching with a more robust tool and support skill manifests.
 
 Steps — file patching:
@@ -268,7 +141,7 @@ Goal: Add an adapter layer to support MCP and plugin-like model routing; impleme
 Steps:
 1. Define openai.Adapter interface that exposes ChatOnce / ChatStream / ModelCapabilities. Implement the current OpenAI-compatible client to satisfy it.
 2. Implement an MCP adapter that can be selected via configuration; begin with a stub or mock that demonstrates routing behavior.
-3. Design a SubAgent interface (Run(context, request) -> result) and a manager that can spawn and supervise sub-agents with scoped permissions and timeouts.
+3. Design a SubAgent interface (Run(context, request) > result) and a manager that can spawn and supervise sub-agents with scoped permissions and timeouts.
 4. Provide examples: a code-gen sub-agent that runs in a restricted workspace, a test-runner sub-agent that executes tests with policy guards.
 
 Acceptance criteria:
@@ -294,7 +167,7 @@ Risk analysis and mitigation
 
 - Large refactors can introduce regressions: mitigate by small incremental moves, frequent tests, and ensuring the project builds between commits.
 - Platform differences for sandbox tools: detect availability and fallback to non-sandboxed runner while documenting limitations.
-- Dependency bloat (e.g., using viper/cobra/v1): weigh trade-offs — cobra is recommended for CLI UX, viper if full config feature set needed. An explicit config loader may suffice to reduce transitive deps.
+- Dependency bloat (e.g., using viper/cobra/v1): weigh trade-offs  cobra is recommended for CLI UX, viper if full config feature set needed. An explicit config loader may suffice to reduce transitive deps.
 
 Suggested incremental commit sequence (example)
 
@@ -308,7 +181,7 @@ Suggested incremental commit sequence (example)
 Closing notes
 
 - Keep commits small and focused: move code first (preserve behavior), then improve behavior in subsequent commits.
-- Prioritize testability and clear interfaces — this pays off by making future features (MCP, sub-agents, SKILLS.md, patching) much easier to implement.
+- Prioritize testability and clear interfaces  this pays off by making future features (MCP, sub-agents, SKILLS.md, patching) much easier to implement.
 - If you want, I can generate a minimal skeletal set of interface files and TODO stubs to kick-start the refactor (no code will be changed unless you ask).
 
 End of ROADMAP
