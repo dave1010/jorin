@@ -39,7 +39,8 @@ func main() {
 	// prepare handler and history
 	cfg := ui.DefaultConfig()
 	hist := ui.NewMemHistory(200)
-	handler := cmdcommands.NewDefaultHandler(os.Stdout, os.Stderr, hist)
+	// pass ui.SystemPrompt as callback so handler can print it for /debug
+	handler := cmdcommands.NewDefaultHandler(os.Stdout, os.Stderr, hist, ui.SystemPrompt)
 	// default agent based on openai package
 	agentImpl := &openai.DefaultAgent{}
 

@@ -30,7 +30,7 @@ func TestREPLHandlerDispatch(t *testing.T) {
 	cfg := DefaultConfig()
 	// create handler with history
 	hist := NewMemHistory(10)
-	h := commands.NewDefaultHandler(out, errOut, hist)
+	h := commands.NewDefaultHandler(out, errOut, hist, SystemPrompt)
 	ctx := context.Background()
 	// run StartREPL in the same goroutine; it will exit on EOF
 	var a agent.Agent = &mockAgent{}

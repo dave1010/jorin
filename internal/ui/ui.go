@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"os/exec"
-	"runtime"
 	"strings"
 
 	"github.com/dave1010/jorin/internal/agent"
@@ -15,60 +12,46 @@ import (
 	"github.com/dave1010/jorin/internal/ui/commands"
 )
 
-const systemPromptBase = `You are a coding agent, designed to complete tasks.
-Respond either with a normal assistant message, or with tool calls (function calling).
-Prefer small, auditable steps. Read before you write. Don't suggest extra work.
-
-## Git
-
-Only run git commands if explicitly asked.
-
-'git add .' is verboten. Always add paths intentionally.
-`
-
-// SystemPrompt builds the base system prompt and appends project-specific
-// instructions from AGENTS.md if present, plus runtime context information.
-func SystemPrompt() string {
-	sp := systemPromptBase
-	if _, err := os.Stat("AGENTS.md"); err == nil {
-		if b, err := os.ReadFile("AGENTS.md"); err == nil {
-			sp = sp + "\n\nProject-specific instructions:\n" + string(b)
-		}
-	}
-	if ctx := runtimeContext(); ctx != "" {
-		sp = sp + "\n\nRuntime environment:\n" + ctx
-	}
-	return sp
+// PromptProvider is an extensible provider of parts of the system prompt.
+// Additional providers can be registered (for example by plugins) to append
+// more context or instructions to the overall system prompt.
+type PromptProvider interface {
+	// Provide returns the text to include in the system prompt. Empty string
+	// means nothing will be added for this provider.
+	Provide() string
 }
 
-func runtimeContext() string {
+var promptProviders []PromptProvider
+
+// RegisterPromptProvider registers a PromptProvider. Providers are iterated in
+// registration order when building the system prompt.
+func RegisterPromptProvider(p PromptProvider) {
+	promptProviders = append(promptProviders, p)
+}
+
+// SystemPrompt builds the full system prompt by concatenating the outputs of
+// all registered PromptProviders. The immutable baseProvider is always placed
+// first regardless of registration order so core instructions appear first.
+func SystemPrompt() string {
 	parts := []string{}
-	if out, err := exec.Command("uname", "-a").Output(); err == nil {
-		parts = append(parts, strings.TrimSpace(string(out)))
-	} else {
-		parts = append(parts, "OS: "+runtime.GOOS+" "+runtime.GOARCH)
-	}
-	if wd, err := os.Getwd(); err == nil {
-		parts = append(parts, "PWD: "+wd)
-	}
-	if _, err := os.Stat(".git"); err == nil {
-		parts = append(parts, "Git repository: yes (.git exists)")
-	} else {
-		parts = append(parts, "Git repository: no (.git not found)")
-	}
-	toolsList := []string{"ag", "rg", "git", "gh", "go", "gofmt", "docker", "fzf", "python", "python3", "php", "curl", "wget"}
-	found := []string{}
-	for _, t := range toolsList {
-		if _, err := exec.LookPath(t); err == nil {
-			found = append(found, t+" ")
+	// include any baseProvider content first
+	for _, p := range promptProviders {
+		if _, ok := p.(baseProvider); ok {
+			if s := p.Provide(); s != "" {
+				parts = append(parts, s)
+			}
 		}
 	}
-	if len(found) > 0 {
-		parts = append(parts, "Tools on PATH (others will exist too): "+strings.Join(found, ", "))
-	} else {
-		parts = append(parts, "Tools on PATH: none of "+strings.Join(toolsList, ", "))
+	// then include all non-base providers in registration order
+	for _, p := range promptProviders {
+		if _, ok := p.(baseProvider); ok {
+			continue
+		}
+		if s := p.Provide(); s != "" {
+			parts = append(parts, s)
+		}
 	}
-	return strings.Join(parts, "\n")
+	return strings.Join(parts, "\n\n")
 }
 
 // StartREPL runs an interactive REPL using the provided reader/writer. It is

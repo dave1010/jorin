@@ -4,6 +4,16 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- Prompt providers: The system prompt was refactored to be modular. Multiple
+  PromptProvider implementations can be registered to contribute parts of the
+  system prompt. Default providers include the immutable core instructions,
+  AGENTS.md content, Git context (PWD and .git presence), OS environment
+  (uname or GOOS/GOARCH), and tools on PATH.
+- UI: The /debug command now prints the current composed system prompt so it's
+  easy to inspect what is being sent to the model.
+- Files: prompt providers moved to internal/ui/provider_*.go for improved
+  separation and future plugin use.
+
 - Internal: Introduced context-aware cancellation across the agent and OpenAI client interfaces. The Agent/LLM ChatSession/ChatOnce APIs now accept context.Context and package adapters/implementations were updated to propagate contexts. The HTTP client now uses http.NewRequestWithContext so in-flight requests can be canceled.
 - REPL / UI: docs/usage.md updated to document that pressing ESC while the agent is running aborts the current request and immediately returns to the prompt (the background request continues but its output is ignored).
 - API: openai adapter and DefaultAgent changed to accept contexts; agent interface updated accordingly.

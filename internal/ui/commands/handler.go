@@ -19,15 +19,18 @@ type History interface {
 
 // NewDefaultHandler returns a Handler that supports a few built-in commands
 // and writes responses to out/errOut. It uses the provided History for
-// '/history' command.
-func NewDefaultHandler(out io.Writer, errOut io.Writer, hist History) Handler {
-	return &defaultHandler{out: out, errOut: errOut, hist: hist}
+// '/history' command. getSystemPrompt is a callback that returns the current
+// system prompt; it's supplied by the caller to avoid an import cycle with the
+// ui package.
+func NewDefaultHandler(out io.Writer, errOut io.Writer, hist History, getSystemPrompt func() string) Handler {
+	return &defaultHandler{out: out, errOut: errOut, hist: hist, sysPrompt: getSystemPrompt}
 }
 
 type defaultHandler struct {
-	out    io.Writer
-	errOut io.Writer
-	hist   History
+	out       io.Writer
+	errOut    io.Writer
+	hist      History
+	sysPrompt func() string
 }
 
 var helpTopics = map[string]string{
@@ -61,8 +64,14 @@ or longer text:
 func (d *defaultHandler) Handle(ctx context.Context, cmd Command) (bool, error) {
 	switch cmd.Name {
 	case "debug":
-		// print nothing here; caller can call ui.SystemPrompt if needed
-		if _, err := fmt.Fprintln(d.errOut, "debug: use /debug to print runtime/system info"); err != nil {
+		// print system prompt via the supplied callback
+		if d.sysPrompt != nil {
+			if _, err := fmt.Fprintln(d.errOut, d.sysPrompt()); err != nil {
+				return false, err
+			}
+			return true, nil
+		}
+		if _, err := fmt.Fprintln(d.errOut, "debug: system prompt not available"); err != nil {
 			return false, err
 		}
 		return true, nil
