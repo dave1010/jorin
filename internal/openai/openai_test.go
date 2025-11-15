@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -35,7 +36,7 @@ func TestChatOnceDecodesResponse(t *testing.T) {
 	}()
 
 	msgs := []types.Message{{Role: "system", Content: "x"}}
-	resp, err := ChatOnce("model", msgs, nil)
+	resp, err := ChatOnce(context.Background(), "model", msgs, nil)
 	if err != nil {
 		t.Fatalf("ChatOnce error: %v", err)
 	}

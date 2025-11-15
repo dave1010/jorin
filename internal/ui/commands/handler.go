@@ -54,6 +54,10 @@ or longer text:
   '!ls -la'). This uses the configured shell tool. Be cautious with destructive
   commands.
 
+- While the agent is running, press the ESC key to abort and return to the
+  prompt immediately. This is a best-effort UI feature: the background agent
+  request will continue but its output will be ignored.
+
 - Use /history to review recent inputs, and /help repl to show this topic again.
 `,
 }

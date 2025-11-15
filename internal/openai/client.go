@@ -2,6 +2,7 @@ package openai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,7 +17,7 @@ import (
 // produce a single chat completion. This abstraction lets us add other
 // LLM backends later without duplicating session orchestration logic.
 type LLM interface {
-	ChatOnce(model string, msgs []types.Message, toolsList []types.Tool) (*types.ChatResponse, error)
+	ChatOnce(ctx context.Context, model string, msgs []types.Message, toolsList []types.Tool) (*types.ChatResponse, error)
 }
 
 // DefaultLLM is the package-level LLM implementation used by the
@@ -33,7 +34,7 @@ func openAIBase() string {
 	return "https://api.openai.com"
 }
 
-func (o openAIClient) ChatOnce(model string, msgs []types.Message, toolsList []types.Tool) (*types.ChatResponse, error) {
+func (o openAIClient) ChatOnce(ctx context.Context, model string, msgs []types.Message, toolsList []types.Tool) (*types.ChatResponse, error) {
 	body := types.ChatRequest{
 		Model:      model,
 		Messages:   msgs,
@@ -42,7 +43,7 @@ func (o openAIClient) ChatOnce(model string, msgs []types.Message, toolsList []t
 	}
 	j, _ := json.Marshal(body)
 
-	req, _ := http.NewRequest("POST", openAIBase()+"/v1/chat/completions", bytes.NewReader(j))
+	req, _ := http.NewRequestWithContext(ctx, "POST", openAIBase()+"/v1/chat/completions", bytes.NewReader(j))
 	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)

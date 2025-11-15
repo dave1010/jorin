@@ -50,7 +50,9 @@ environments.
 ## REPL details
 
 - Interactive terminal (tty): full line editing (cursor movement, history,
-  Ctrl-C to abort input).
+  Ctrl-C to abort input). Press ESC while the agent is running to abort the
+  current request and return immediately to the prompt. The background request
+  will continue but its output will be ignored.
 - Non-interactive (piped): falls back to a simple scanner mode suitable for
   deterministic scripting and tests.
 - Slash commands: supported with prefix `/` (e.g. `/help`, `/history`). Escape

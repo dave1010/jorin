@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"github.com/dave1010/jorin/internal/openai"
 	"github.com/dave1010/jorin/internal/types"
 )
@@ -13,6 +14,6 @@ func RunAgent(model string, prompt string, systemPrompt string, pol *types.Polic
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: prompt},
 	}
-	_, out, err := openai.ChatSession(model, msgs, pol)
+	_, out, err := openai.ChatSession(context.Background(), model, msgs, pol)
 	return out, err
 }
