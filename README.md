@@ -1,4 +1,4 @@
-# jorin
+# `jorin`
 
 A small coding agent that calls tools (shell, read_file, write_file, http_get)
 and communicates with an OpenAI-compatible API. Built to be used as a
@@ -13,47 +13,34 @@ more information.
 - Security and tool permissions: [docs/security.md](docs/security.md)
 - Architecture overview: [docs/architecture.md](docs/architecture.md)
 
-## Download
+## Install
 
 Download the latest release for your platform from:
 
 https://github.com/dave1010/jorin/releases
 
-## Requirements
-
-- Go toolchain (1.20+ recommended)
-- GNU Make (optional)
+Then add it to your $PATH.
 
 ## Quick start
-
-Build the CLI:
-
-```bash
-make build
-# or
-go build -o jorin ./cmd/jorin
-```
 
 Show help:
 
 ```bash
-./jorin --help
+jorin --help
 ```
 
 Start the REPL (default when invoked with no args):
 
 ```bash
-./jorin --repl
-# or simply
-./jorin
+jorin
 ```
 
 Send a single prompt from the command line or a script:
 
 ```bash
-./jorin "Refactor function X to be smaller"
+jorin "Refactor function X to be smaller"
 # or
-echo "Add logging to foo()" | ./jorin
+echo "Add logging to foo()" | jorin
 ```
 
 ## Common flags
@@ -71,16 +58,33 @@ echo "Add logging to foo()" | ./jorin
 Dry-run shell mode:
 
 ```bash
-./jorin --dry-shell "Run the tests"
+jorin --dry-shell "Run the tests"
 ```
 
 Prevent file writes:
 
 ```bash
-./jorin --readonly "Make a small change to main.go"
+jorin --readonly "Make a small change to main.go"
 ```
 
-For more usage, development and architecture details see docs/.
+For more usage details see docs/.
+
+## Development
+
+### Requirements
+
+- Go toolchain (1.20+ recommended)
+- GNU Make (optional)
+
+## Buildimg
+
+Build the CLI:
+
+```bash
+make build
+# or
+go build -o jorin ./cmd/jorin
+```
 
 ## License
 
