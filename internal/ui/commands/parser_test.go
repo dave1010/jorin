@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 	"testing"
 )
 
@@ -44,16 +43,4 @@ func TestNotCommand(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected not a command")
 	}
-}
-
-// Handler mock test
-type mockHandler struct {
-	called bool
-	cmd    Command
-}
-
-func (m *mockHandler) Handle(ctx context.Context, cmd Command) (bool, error) {
-	m.called = true
-	m.cmd = cmd
-	return true, nil
 }

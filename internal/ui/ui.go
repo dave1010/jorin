@@ -80,7 +80,9 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 	if cfg == nil {
 		cfg = DefaultConfig()
 	}
-	fmt.Fprintln(out, headerStyleStr("jorin> (Ctrl-D to exit)"))
+	if _, err := fmt.Fprintln(out, headerStyleStr("jorin> (Ctrl-D to exit)")); err != nil {
+		return err
+	}
 	msgs := []types.Message{{Role: "system", Content: SystemPrompt()}}
 	reg := tools.Registry()
 	for {
@@ -89,7 +91,9 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 			return ctx.Err()
 		default:
 		}
-		fmt.Fprint(out, promptStyleStr(cfg.Prompt))
+		if _, err := fmt.Fprint(out, promptStyleStr(cfg.Prompt)); err != nil {
+			return err
+		}
 		if !scanner.Scan() {
 			break
 		}
@@ -104,7 +108,9 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 			// parsed a command; dispatch to handler
 			handled, err := handler.Handle(ctx, cmd)
 			if err != nil {
-				fmt.Fprintln(errOut, errorStyleStr("ERR:"), err)
+				if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
+					return werr
+				}
 				continue
 			}
 			if handled {
@@ -126,39 +132,57 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 		if strings.HasPrefix(trim, "!") {
 			cmdStr := strings.TrimSpace(trim[1:])
 			if cmdStr == "" {
-				fmt.Fprintln(errOut, infoStyleStr("empty shell command"))
+				if _, werr := fmt.Fprintln(errOut, infoStyleStr("empty shell command")); werr != nil {
+					return werr
+				}
 				continue
 			}
 			if sh, ok := reg["shell"]; ok {
 				res, err := sh(map[string]any{"cmd": cmdStr}, pol)
 				if err != nil {
-					fmt.Fprintln(errOut, errorStyleStr("ERR:"), err)
+					if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
+						return werr
+					}
 					continue
 				}
 				if e, ok := res["error"]; ok {
-					fmt.Fprintln(errOut, errorStyleStr("ERR:"), e)
+					if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), e); werr != nil {
+						return werr
+					}
 					continue
 				}
 				if dr, ok := res["dry_run"].(bool); ok && dr {
 					if c, ok := res["cmd"].(string); ok {
-						fmt.Fprintln(errOut, infoStyleStr("Dry run:"), c)
+						if _, werr := fmt.Fprintln(errOut, infoStyleStr("Dry run:"), c); werr != nil {
+							return werr
+						}
 					} else {
-						fmt.Fprintln(errOut, infoStyleStr("Dry run:"), cmdStr)
+						if _, werr := fmt.Fprintln(errOut, infoStyleStr("Dry run:"), cmdStr); werr != nil {
+							return werr
+						}
 					}
 					continue
 				}
 				if sout, ok := res["stdout"].(string); ok && sout != "" {
-					fmt.Fprintln(out, infoStyleStr(sout))
+					if _, werr := fmt.Fprintln(out, infoStyleStr(sout)); werr != nil {
+						return werr
+					}
 				}
 				if serr, ok := res["stderr"].(string); ok && serr != "" {
-					fmt.Fprintln(errOut, errorStyleStr(serr))
+					if _, werr := fmt.Fprintln(errOut, errorStyleStr(serr)); werr != nil {
+						return werr
+					}
 				}
 				if rc, ok := res["returncode"]; ok {
-					fmt.Fprintln(errOut, infoStyleStr("returncode:"), rc)
+					if _, werr := fmt.Fprintln(errOut, infoStyleStr("returncode:"), rc); werr != nil {
+						return werr
+					}
 				}
 				continue
 			}
-			fmt.Fprintln(errOut, errorStyleStr("shell tool not available"))
+			if _, werr := fmt.Fprintln(errOut, errorStyleStr("shell tool not available")); werr != nil {
+				return werr
+			}
 			continue
 		}
 		// forward to model via agent interface
@@ -170,10 +194,14 @@ func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Poli
 		var err error
 		msgs, outStr, err = a.ChatSession(model, msgs, pol)
 		if err != nil {
-			fmt.Fprintln(errOut, errorStyleStr("ERR:"), err)
+			if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
+				return werr
+			}
 			continue
 		}
-		fmt.Fprintln(out, infoStyleStr(outStr))
+		if _, werr := fmt.Fprintln(out, infoStyleStr(outStr)); werr != nil {
+			return werr
+		}
 	}
 	return nil
 }

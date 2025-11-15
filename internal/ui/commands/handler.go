@@ -33,10 +33,14 @@ func (d *defaultHandler) Handle(ctx context.Context, cmd Command) (bool, error) 
 	switch cmd.Name {
 	case "debug":
 		// print nothing here; caller can call ui.SystemPrompt if needed
-		fmt.Fprintln(d.errOut, "debug: use /debug to print runtime/system info")
+		if _, err := fmt.Fprintln(d.errOut, "debug: use /debug to print runtime/system info"); err != nil {
+			return false, err
+		}
 		return true, nil
 	case "help":
-		fmt.Fprintln(d.out, "Available commands: /help, /history [n], /debug")
+		if _, err := fmt.Fprintln(d.out, "Available commands: /help, /history [n], /debug"); err != nil {
+			return false, err
+		}
 		return true, nil
 	case "history":
 		limit := 0
@@ -46,17 +50,23 @@ func (d *defaultHandler) Handle(ctx context.Context, cmd Command) (bool, error) 
 			}
 		}
 		if d.hist == nil {
-			fmt.Fprintln(d.errOut, "history not available")
+			if _, err := fmt.Fprintln(d.errOut, "history not available"); err != nil {
+				return false, err
+			}
 			return true, nil
 		}
 		list := d.hist.List(limit)
 		for i := range list {
-			fmt.Fprintln(d.out, list[i])
+			if _, err := fmt.Fprintln(d.out, list[i]); err != nil {
+				return false, err
+			}
 		}
 		return true, nil
 	default:
 		// unknown commands result in a friendly message
-		fmt.Fprintln(d.errOut, "unknown command:", cmd.Raw)
+		if _, err := fmt.Fprintln(d.errOut, "unknown command:", cmd.Raw); err != nil {
+			return false, err
+		}
 		return true, nil
 	}
 }

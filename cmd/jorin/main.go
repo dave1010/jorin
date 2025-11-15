@@ -15,6 +15,9 @@ import (
 	"github.com/dave1010/jorin/internal/version"
 )
 
+// reference chatSession to avoid unused lint when file exists
+var _ = chatSession
+
 func main() {
 	model := flag.String("model", "gpt-5-mini", "Model ID")
 	repl := flag.Bool("repl", false, "Interactive REPL")
@@ -42,12 +45,18 @@ func main() {
 
 	// If program invoked with no args at all, behave as if --repl was provided.
 	if len(os.Args) == 1 {
-		ui.StartREPL(context.Background(), agentImpl, *model, pol, os.Stdin, os.Stdout, os.Stderr, cfg, handler, hist)
+		if err := ui.StartREPL(context.Background(), agentImpl, *model, pol, os.Stdin, os.Stdout, os.Stderr, cfg, handler, hist); err != nil {
+			fmt.Fprintln(os.Stderr, "ERR:", err)
+			os.Exit(1)
+		}
 		return
 	}
 
 	if *repl {
-		ui.StartREPL(context.Background(), agentImpl, *model, pol, os.Stdin, os.Stdout, os.Stderr, cfg, handler, hist)
+		if err := ui.StartREPL(context.Background(), agentImpl, *model, pol, os.Stdin, os.Stdout, os.Stderr, cfg, handler, hist); err != nil {
+			fmt.Fprintln(os.Stderr, "ERR:", err)
+			os.Exit(1)
+		}
 		return
 	}
 

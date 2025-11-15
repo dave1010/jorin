@@ -11,7 +11,7 @@ type memHistory struct {
 	cap  int
 	buf  []string
 	head int
-	ex   bool
+	_    struct{}
 }
 
 func NewMemHistory(capacity int) History {
