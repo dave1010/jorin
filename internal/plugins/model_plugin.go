@@ -10,9 +10,9 @@ func init() {
 	p := &Plugin{
 		Name:        "model-plugin",
 		Description: "Provides /model command to show current model",
-		Commands: map[string]CommandHandler{
-			"plugins": pluginListHandler,
-			"model":   modelHandler,
+		Commands: map[string]CommandDef{
+			"plugins": {Description: "List plugins", Handler: pluginListHandler},
+			"model":   {Description: "Show current model", Handler: modelHandler},
 		},
 	}
 	RegisterPlugin(p)
