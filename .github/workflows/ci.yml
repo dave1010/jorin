@@ -66,6 +66,8 @@ jobs:
             goarch: arm64
           - goos: android
             goarch: arm64
+          - goos: android
+            goarch: arm
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -86,10 +88,13 @@ jobs:
           echo "Building for $GOOS/$GOARCH"
           BINARY=jorin
           mkdir -p dist
-          GOFLAGS="" go build -ldflags "-s -w" -o dist/${BINARY}-${GOOS}-${GOARCH} ./cmd/jorin
+          # add .exe for windows binaries
+          ext=""
+          if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
+          GOFLAGS="" go build -ldflags "-s -w" -o dist/${BINARY}-${GOOS}-${GOARCH}${ext} ./cmd/jorin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: jorin-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/
+          path: dist/${{ matrix.goos }}-${{ matrix.goarch }}
