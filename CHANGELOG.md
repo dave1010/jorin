@@ -4,6 +4,14 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- Plugin system: added a compiled-in plugin framework that lets the agent discover and expose plugin-provided commands. New commands and metadata are surfaced via the UI and command registry.
+  - New CLI commands: /plugins (list installed plugins) and /model (inspect/set model providers).
+  - Plugin subcommand metadata and help helpers make plugin commands appear in /help and improve discoverability.
+  - The application can now select a model provider via the plugin registry (used by main), and a model plugin was adapted to the new helpers.
+- Documentation and roadmap: documented the plugin system in usage docs and linked it from the README. The roadmap was revised and updated with plugin integration tasks (examples, integration tests, help formatting) and clearer phases/steps so contributors know the next priorities.
+- UI: /help now includes plugin commands. Tests for command integration were added to ensure plugin commands behave correctly in the REPL/UI.
+- Tests: unit tests added for the plugin registry, model provider wiring, and UI/commands to improve confidence in the new plugin code.
+- Tooling/maintenance: small install/build convenience changes and tag-fetching improvements.
 
 ## v0.0.6 — 2025-11-15
 
