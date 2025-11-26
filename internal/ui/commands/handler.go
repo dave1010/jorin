@@ -6,6 +6,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/dave1010/jorin/internal/plugins"
 )
 
 // History is a lightweight local interface used by handlers. It is purposely
@@ -62,6 +64,11 @@ or longer text:
 }
 
 func (d *defaultHandler) Handle(ctx context.Context, cmd Command) (bool, error) {
+	// check plugin commands first
+	if h, ok := plugins.LookupCommand(cmd.Name); ok {
+		return h(ctx, cmd.Name, cmd.Args, cmd.Raw, d.out, d.errOut)
+	}
+
 	switch cmd.Name {
 	case "debug":
 		// print system prompt via the supplied callback
