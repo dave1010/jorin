@@ -4,6 +4,10 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- None.
+
+## v0.0.7 — 2025-11-26
+
 - Plugin system: added a compiled-in plugin framework that lets the agent discover and expose plugin-provided commands. New commands and metadata are surfaced via the UI and command registry.
   - New CLI commands: /plugins (list installed plugins) and /model (inspect/set model providers).
   - Plugin subcommand metadata and help helpers make plugin commands appear in /help and improve discoverability.
@@ -38,11 +42,11 @@ This file summarizes notable project changes grouped into semantic version-style
 - Tests: ensure existing tests still pass with the new line reader (scanner fallback preserved for non-ttys).
 
 - Roadmap update: Phase 1 (package refactor and interfaces) marked COMPLETE.
-- Phase 2 (REPL  UI improvements) partially implemented. Completed items added to ROADMAP-PLAN.md and include:
+- Phase 2 (REPL \u001f UI improvements) partially implemented. Completed items added to ROADMAP-PLAN.md and include:
   - internal/ui package with StartREPL supporting injected io.Reader/io.Writer and a Context-aware agent interface.
   - internal/ui/commands package with a deterministic slash-command parser (quoted args, escape prefix) and a Handler interface.
   - In-memory history implementation (internal/ui/history) and a default command handler supporting /help, /history and /debug.
-  - REPL wiring: command parsing  dispatch, escape-prefix handling, forwarding to agent, and basic tools registry support for leading '!' shell commands.
+  - REPL wiring: command parsing \u001f dispatch, escape-prefix handling, forwarding to agent, and basic tools registry support for leading '!' shell commands.
   - Unit tests covering command parsing and basic REPL flows.
 
 ## v0.0.4 — 2025-11-15
