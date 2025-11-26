@@ -9,6 +9,7 @@ import (
 
 	"github.com/dave1010/jorin/internal/agent"
 	"github.com/dave1010/jorin/internal/openai"
+	"github.com/dave1010/jorin/internal/plugins"
 	"github.com/dave1010/jorin/internal/types"
 	"github.com/dave1010/jorin/internal/ui"
 	cmdcommands "github.com/dave1010/jorin/internal/ui/commands"
@@ -33,6 +34,9 @@ func main() {
 		fmt.Println(version.Version)
 		return
 	}
+
+	// make plugin system aware of the current model
+	plugins.SetModelProvider(func() string { return *model })
 
 	pol := &types.Policy{Readonly: *readonly, DryShell: *dry, Allow: *allow, Deny: *deny, CWD: *cwd}
 
