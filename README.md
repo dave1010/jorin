@@ -15,6 +15,12 @@ more information.
 
 ## Install
 
+One line install:
+
+```bash
+curl -fsSL https://get.jorin.ai | bash
+```
+
 Download the latest release for your platform from:
 
 https://github.com/dave1010/jorin/releases
