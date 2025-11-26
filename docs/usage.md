@@ -57,6 +57,62 @@ environments.
   the prefix with a backslash to send a literal slash (e.g. `\/help`).
 - Legacy `!` prefix: lines starting with `!` are treated as shell commands.
 
+## Plugin system
+
+jorin supports compiled-in plugins that can register additional slash
+commands (including nested subcommands). Plugins are compiled into the binary
+and register themselves at init().
+
+Available plugin features:
+
+- Register top-level commands with a description and handler.
+- Register subcommands under a top-level command; subcommands also have their
+  own descriptions and handlers.
+- Plugins can obtain runtime context like the current model by the host
+  setting a model provider callback.
+
+Provided built-in plugin:
+
+- model-plugin
+  - /plugins — lists compiled-in plugins (name and description)
+  - /model — prints the currently selected model (reads from the host-provided model provider)
+
+How to write and register a plugin (compiled-in)
+
+- Create a package under internal/plugins or another package that imports
+  github.com/dave1010/jorin/internal/plugins.
+- Create a Plugin value and call plugins.RegisterPlugin in an init() function.
+- Provide CommandDef entries with Description, Handler, and optional
+  Subcommands.
+
+Example (informal):
+
+```go
+func init() {
+  p := &plugins.Plugin{
+    Name: "my-plugin",
+    Description: "Adds /thing commands",
+    Commands: map[string]plugins.CommandDef{
+      "thing": {
+        Description: "manage things",
+        Handler: myThingHandler,
+        Subcommands: map[string]plugins.CommandDef{
+          "list": { Description: "list things", Handler: myThingListHandler },
+        },
+      },
+    },
+  }
+  plugins.RegisterPlugin(p)
+}
+```
+
+Using help and plugin commands
+
+- /help — lists builtin help topics and plugin commands.
+- /help <topic> — shows builtin help for a topic (e.g. `repl`) or plugin help
+  for a command with descriptions and subcommands.
+- Invoke plugin commands as usual: `/command` or include a subcommand `/command sub`.
+
 ## Examples
 
 Dry-run shell mode (agent reports shell commands but does not execute them):
@@ -84,8 +140,8 @@ Allow/deny list examples:
 For more details about advanced REPL usage, shell policy and tool
 permissions see the security and architecture docs:
 
-- [../docs/security.md](docs/security.md)
-- [../docs/architecture.md](docs/architecture.md)
+- [security.md](security.md)
+- [architecture.md](architecture.md)
 
 If you maintain repository-specific guidance, add an AGENTS.md file to the
 project root — jorin will append the contents to the system prompt when run
