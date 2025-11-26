@@ -93,6 +93,25 @@ func (d *defaultHandler) Handle(ctx context.Context, cmd Command) (bool, error) 
 				}
 				return true, nil
 			}
+			// plugin-provided help for commands
+			if desc, subs, ok := plugins.HelpForCommand(topic); ok {
+				if desc != "" {
+					if _, err := fmt.Fprintln(d.out, desc); err != nil {
+						return false, err
+					}
+				}
+				if len(subs) > 0 {
+					if _, err := fmt.Fprintln(d.out, "Subcommands:"); err != nil {
+						return false, err
+					}
+					for sn, sdesc := range subs {
+						if _, err := fmt.Fprintln(d.out, "  "+sn+": "+sdesc); err != nil {
+							return false, err
+						}
+					}
+				}
+				return true, nil
+			}
 			if _, err := fmt.Fprintln(d.errOut, "unknown help topic:", topic); err != nil {
 				return false, err
 			}
@@ -113,6 +132,23 @@ func (d *defaultHandler) Handle(ctx context.Context, cmd Command) (bool, error) 
 			for _, t := range topics {
 				if _, err := fmt.Fprintln(d.out, "  "+t); err != nil {
 					return false, err
+				}
+			}
+		}
+		// include plugin commands in help output
+		if cmds := plugins.ListAllCommands(); len(cmds) > 0 {
+			if _, err := fmt.Fprintln(d.out, "Plugin commands:"); err != nil {
+				return false, err
+			}
+			for name, desc := range cmds {
+				if desc == "" {
+					if _, err := fmt.Fprintln(d.out, "  /"+name); err != nil {
+						return false, err
+					}
+				} else {
+					if _, err := fmt.Fprintln(d.out, "  /"+name+" - "+desc); err != nil {
+						return false, err
+					}
 				}
 			}
 		}
