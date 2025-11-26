@@ -5,6 +5,9 @@
 - Add more comprehensive unit/integration tests for StartREPL flows (mock agent to validate forwarding and error handling across more scenarios).
 - File-backed history persistence (use only for interactive terminal mode) and history format documentation.
 - Multi-line input and paste handling with a configurable terminator (optional; make deterministic for tests).
+- Add more integration tests that exercise plugin command flows end-to-end (REPL invocation of top-level and nested subcommands, error handling, and interaction with history and policy).
+- Provide an example plugin in an examples/ or contrib/ directory demonstrating realistic command handlers and subcommands (showcases recommended patterns for command registration, help text, and handler behavior).
+- Improve /help output by formatting and ordering plugin command listings: alphabetize plugin commands, display concise one-line summaries, and list subcommands in a consistent order.
 
 ## Phase 3 — Configuration and CLI subcommands
 Goal: Provide consistent configuration precedence and improved CLI UX.
@@ -80,7 +83,7 @@ Goal: Add an adapter layer to support MCP and plugin-like model routing; impleme
 Steps:
 1. Define openai.Adapter interface that exposes ChatOnce / ChatStream / ModelCapabilities. Implement the current OpenAI-compatible client to satisfy it.
 2. Implement an MCP adapter that can be selected via configuration; begin with a stub or mock that demonstrates routing behavior.
-3. Design a SubAgent interface (Run(context, request) > result) and a manager that can spawn and supervise sub-agents with scoped permissions and timeouts.
+3. Design a SubAgent interface (Run(context, request)  result) and a manager that can spawn and supervise sub-agents with scoped permissions and timeouts.
 4. Provide examples: a code-gen sub-agent that runs in a restricted workspace, a test-runner sub-agent that executes tests with policy guards.
 
 Acceptance criteria:
