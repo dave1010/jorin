@@ -6,6 +6,13 @@ This file summarizes notable project changes grouped into semantic version-style
 
 - None.
 
+## v0.0.8 — 2025-11-27
+
+- CI: added Android build jobs and enforced formatting (gofmt) in CI workflows.
+- CI: enhanced Android NDK support and broadened Android build matrix to cover additional targets.
+- install.sh: detect Android environments and adjust installation steps accordingly.
+- Release workflow: improved release steps to support Android NDK artifacts and cross-platform releases.
+
 ## v0.0.7 — 2025-11-26
 
 - Plugin system: added a compiled-in plugin framework that lets the agent discover and expose plugin-provided commands. New commands and metadata are surfaced via the UI and command registry.
