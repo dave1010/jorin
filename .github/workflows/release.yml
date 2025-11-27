@@ -15,25 +15,37 @@ jobs:
         include:
           - goos: linux
             goarch: amd64
+            cgo: 0
           - goos: linux
             goarch: arm64
+            cgo: 0
           - goos: linux
             goarch: 386
+            cgo: 0
           - goos: linux
             goarch: arm
             goarm: '7'
+            cgo: 0
           - goos: darwin
             goarch: amd64
+            cgo: 0
           - goos: darwin
             goarch: arm64
+            cgo: 0
           - goos: windows
             goarch: amd64
+            cgo: 0
           - goos: windows
             goarch: 386
+            cgo: 0
           - goos: android
             goarch: arm64
+            cgo: 1
+            api: 21
           - goos: freebsd
             goarch: amd64
+            cgo: 0
+
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -43,24 +55,58 @@ jobs:
         with:
           go-version: '1.20'
 
+      # Install Android NDK only for android rows
+      - name: Setup Android NDK
+        if: matrix.goos == 'android'
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          add-to-path: false
+
       - name: Build
         env:
-          CGO_ENABLED: 0
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: ${{ matrix.cgo }}
+          ANDROID_API: ${{ matrix.api }}
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
-          echo "Building for $GOOS/$GOARCH${GOARM:+/arm$GOARM}"
+          echo "Building for $GOOS/$GOARCH${GOARM:+/arm$GOARM} (CGO_ENABLED=$CGO_ENABLED)"
+
+          if [ "$GOOS" = "android" ]; then
+            if [ -z "$ANDROID_NDK_HOME" ]; then
+              echo "ANDROID_NDK_HOME is not set – did setup-ndk run?"
+              exit 1
+            fi
+
+            TOOLCHAIN_BIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+
+            if [ "$GOARCH" = "arm64" ]; then
+              export CC="$TOOLCHAIN_BIN/aarch64-linux-android${ANDROID_API}-clang"
+            else
+              echo "Unsupported ANDROID GOARCH=$GOARCH"
+              exit 1
+            fi
+
+            echo "Using Android NDK CC=$CC"
+          fi
+
           BINARY=jorin
           mkdir -p dist
+
           # Set extension for windows
           if [ "${GOOS}" = "windows" ]; then
             EXT=.exe
           else
             EXT=
           fi
-          # Build (if GOARM is empty it will be ignored)
-          GOFLAGS="" GOOS=$GOOS GOARCH=$GOARCH GOARM=$GOARM go build -ldflags "-s -w" -o dist/${BINARY}-${GOOS}-${GOARCH}${EXT} ./cmd/jorin
+
+          GOOS=$GOOS GOARCH=$GOARCH GOARM=$GOARM \
+          go build -ldflags "-s -w" \
+            -o "dist/${BINARY}-${GOOS}-${GOARCH}${EXT}" \
+            ./cmd/jorin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -83,7 +129,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          # upload every file in dist/ including nested files (download-artifact places artifacts in subfolders)
+          # upload every file in dist/ including nested files
           files: |
             dist/**
           # make the release name/tag the pushed tag
