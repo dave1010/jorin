@@ -50,8 +50,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-        with:
-          fetch-tags: true
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -75,6 +73,7 @@ jobs:
           CGO_ENABLED: ${{ matrix.cgo }}
           ANDROID_API: ${{ matrix.api }}
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          VERSION: ${{ github.ref_name }}
         run: |
           echo "Building for $GOOS/$GOARCH${GOARM:+/arm$GOARM} (CGO_ENABLED=$CGO_ENABLED)"
 
@@ -107,7 +106,8 @@ jobs:
           fi
 
           GOOS=$GOOS GOARCH=$GOARCH GOARM=$GOARM \
-          go build -ldflags "-s -w" \
+          go build \
+            -ldflags "-s -w -X github.com/dave1010/jorin/internal/version.Version=${VERSION}" \
             -o "dist/${BINARY}-${GOOS}-${GOARCH}${EXT}" \
             ./cmd/jorin
 
