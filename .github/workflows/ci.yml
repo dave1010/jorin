@@ -29,7 +29,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-
       - name: Run gofmt (check)
         run: |
           echo "Checking formatting with gofmt..."
@@ -40,7 +39,6 @@ jobs:
             echo "Run 'gofmt -w .' to fix.";
             exit 1;
           fi
-
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
@@ -52,7 +50,7 @@ jobs:
       - name: Run tests
         run: |
           go test ./... -v
-
+          
   build:
     name: Build binaries
     runs-on: ubuntu-latest
@@ -62,12 +60,19 @@ jobs:
         include:
           - goos: linux
             goarch: amd64
+            cgo: 0
           - goos: darwin
             goarch: arm64
+            cgo: 0
           - goos: android
             goarch: arm64
+            cgo: 1
+            cc: aarch64-linux-android21-clang
           - goos: android
             goarch: arm
+            cgo: 1
+            cc: armv7a-linux-androideabi21-clang
+
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -79,22 +84,35 @@ jobs:
         with:
           go-version: '1.20'
 
+      # NEW: install Android NDK for android rows
+      - name: Setup Android NDK
+        if: matrix.goos == 'android'
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          add-to-path: true
+
       - name: Build
         env:
-          CGO_ENABLED: 0
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: ${{ matrix.cgo }}
+          # CC only matters when CGO_ENABLED=1 (android rows)
+          CC: ${{ matrix.cc || '' }}
         run: |
-          echo "Building for $GOOS/$GOARCH"
+          echo "Building for $GOOS/$GOARCH (CGO_ENABLED=$CGO_ENABLED, CC=$CC)"
           BINARY=jorin
           mkdir -p dist
-          # add .exe for windows binaries
           ext=""
           if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
-          GOFLAGS="" go build -ldflags "-s -w" -o dist/${BINARY}-${GOOS}-${GOARCH}${ext} ./cmd/jorin
+          go build -ldflags "-s -w" \
+            -o "dist/${BINARY}-${GOOS}-${GOARCH}${ext}" \
+            ./cmd/jorin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: jorin-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/${{ matrix.goos }}-${{ matrix.goarch }}*
+          
