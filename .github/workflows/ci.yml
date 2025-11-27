@@ -35,10 +35,10 @@ jobs:
           echo "Checking formatting with gofmt..."
           fmt_output=$(gofmt -l . || true)
           if [ -n "$fmt_output" ]; then
-            echo "The following files need formatting:";
-            echo "$fmt_output";
-            echo "Run 'gofmt -w .' to fix.";
-            exit 1;
+            echo "The following files need formatting:"
+            echo "$fmt_output"
+            echo "Run 'gofmt -w .' to fix."
+            exit 1
           fi
 
       - name: Run golangci-lint
@@ -69,16 +69,8 @@ jobs:
           - goos: android
             goarch: arm64
             cgo: 1
-            cc: clang
-            cflags: --target=aarch64-linux-android21
-            ldflags: --target=aarch64-linux-android21
-          - goos: android
-            goarch: arm
-            goarm: '7'
-            cgo: 1
-            cc: clang
-            cflags: --target=armv7a-linux-androideabi21
-            ldflags: --target=armv7a-linux-androideabi21
+            api: 21
+          # you can add more (android/arm, windows, etc.) later
 
     steps:
       - name: Check out code
@@ -91,26 +83,46 @@ jobs:
         with:
           go-version: '1.20'
 
-      # Install Android NDK only for android rows
+      # Install Android NDK for android rows and expose ndk-path output
       - name: Setup Android NDK
         if: matrix.goos == 'android'
         id: setup-ndk
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r26d
-          add-to-path: true
+          add-to-path: false
 
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          GOARM: ${{ matrix.goarm }}
           CGO_ENABLED: ${{ matrix.cgo }}
-          CC: ${{ matrix.cc }}
-          CGO_CFLAGS: ${{ matrix.cflags }}
-          CGO_LDFLAGS: ${{ matrix.ldflags }}
+          ANDROID_API: ${{ matrix.api }}
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
-          echo "Building for $GOOS/$GOARCH${GOARM:+/arm$GOARM} (CGO_ENABLED=$CGO_ENABLED, CC=${CC:-<none>})"
+          echo "Building for $GOOS/$GOARCH (CGO_ENABLED=$CGO_ENABLED)"
+
+          # If this is an Android build, point CC at the NDK toolchain clang
+          if [ "$GOOS" = "android" ]; then
+            if [ -z "$ANDROID_NDK_HOME" ]; then
+              echo "ANDROID_NDK_HOME is not set – did setup-ndk run?"
+              exit 1
+            fi
+
+            TOOLCHAIN_BIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+
+            if [ "$GOARCH" = "arm64" ]; then
+              export CC="$TOOLCHAIN_BIN/aarch64-linux-android${ANDROID_API}-clang"
+            elif [ "$GOARCH" = "arm" ]; then
+              export CC="$TOOLCHAIN_BIN/armv7a-linux-androideabi${ANDROID_API}-clang"
+            else
+              echo "Unsupported ANDROID GOARCH=$GOARCH"
+              exit 1
+            fi
+
+            echo "Using Android NDK CC=$CC"
+          fi
+
           BINARY=jorin
           mkdir -p dist
 
@@ -119,7 +131,7 @@ jobs:
             ext=".exe"
           fi
 
-          GOOS=$GOOS GOARCH=$GOARCH GOARM=$GOARM \
+          GOOS=$GOOS GOARCH=$GOARCH \
           go build -ldflags "-s -w" \
             -o "dist/${BINARY}-${GOOS}-${GOARCH}${ext}" \
             ./cmd/jorin
@@ -129,3 +141,4 @@ jobs:
         with:
           name: jorin-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/**
+  
