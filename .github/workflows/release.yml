@@ -5,6 +5,7 @@ on:
     # Trigger on tag pushes. Adjust pattern as needed (e.g. 'v*.*.*')
     tags:
       - '**'
+  workflow_dispatch:
 
 jobs:
   build:
