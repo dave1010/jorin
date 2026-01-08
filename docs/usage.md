@@ -56,6 +56,7 @@ environments.
 - Slash commands: supported with prefix `/` (e.g. `/help`, `/history`). Escape
   the prefix with a backslash to send a literal slash (e.g. `\/help`).
 - Legacy `!` prefix: lines starting with `!` are treated as shell commands.
+- /debug: prints the full system prompt (including AGENTS.md content).
 
 ## Plugin system
 
@@ -142,6 +143,7 @@ permissions see the security and architecture docs:
 
 - [security.md](security.md)
 - [architecture.md](architecture.md)
+- [reference.md](reference.md)
 
 If you maintain repository-specific guidance, add an AGENTS.md file to the
 project root — jorin will append the contents to the system prompt when run

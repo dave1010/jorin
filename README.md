@@ -9,9 +9,11 @@ details have been moved to the docs/ directory. See the docs links below for
 more information.
 
 - Quick start and usage: [docs/usage.md](docs/usage.md)
+- CLI reference: [docs/reference.md](docs/reference.md)
 - Development: [docs/development.md](docs/development.md)
 - Security and tool permissions: [docs/security.md](docs/security.md)
 - Architecture overview: [docs/architecture.md](docs/architecture.md)
+- Troubleshooting: [docs/troubleshooting.md](docs/troubleshooting.md)
 
 ## Install
 
