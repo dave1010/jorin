@@ -29,7 +29,8 @@ without modifying core code.
 - Providers are concatenated in registration order with blank lines between
   sections.
 - Default providers include the immutable base instructions, AGENTS.md (when
-  present), and runtime context (git cwd, OS uname, and tools on PATH).
+  present), personal Skills from ~/.jorin/skills (SKILL.md descriptions), and
+  runtime context (git cwd, OS uname, and tools on PATH).
 
 This is designed for future plugin integration: a plugin can register a
 provider during its init/startup to contribute to the system prompt.

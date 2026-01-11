@@ -5,6 +5,7 @@ This file summarizes notable project changes grouped into semantic version-style
 ## Unreleased
 
 - Docs: added a comprehensive CLI reference and troubleshooting guide, and linked them from README and usage docs.
+- Prompt providers: added support for personal Skills under ~/.jorin/skills, adding their descriptions to the system prompt.
 
 ## v0.0.8 — 2025-11-27
 
