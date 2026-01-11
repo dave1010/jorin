@@ -34,7 +34,8 @@ without modifying core code.
   (executables that emit contextual snippets wrapped in XML-like tags). The
   repository ships runtime context Situations in ./.jorin/situations for git
   status, runtime environment, available executables, and Go module detection,
-  plus bundled Skills under ./.jorin/skills.
+  plus bundled Skills under ./.jorin/skills. Shared Situation patterns live at
+  https://github.com/dave1010/agent-situations.
 
 This is designed for future plugin integration: a plugin can register a
 provider during its init/startup to contribute to the system prompt.
