@@ -158,6 +158,8 @@ them under ~/.jorin/situations or ./.jorin/situations (project-specific).
 Each situation lives in its own folder with a SITUATION.yaml metadata file and
 an executable referenced by the run field. When the executable prints output,
 jorin wraps it in an XML-like tag matching the situation name.
+The repository ships built-in runtime Situations in .jorin/situations for
+reporting git status, OS uname, and tools available on PATH.
 
 Example:
 

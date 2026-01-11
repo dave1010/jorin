@@ -1,0 +1,3 @@
+name: runtime-git
+description: Report git repository presence and working directory.
+run: run

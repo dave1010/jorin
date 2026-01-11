@@ -1,0 +1,3 @@
+name: runtime-execs
+description: Report common executables available on PATH.
+run: run
