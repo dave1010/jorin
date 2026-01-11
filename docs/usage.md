@@ -152,3 +152,28 @@ from that repository.
 You can also add personal Skills under ~/.jorin/skills. Each Skill should live
 in its own folder with a SKILL.md that includes YAML frontmatter (name and
 description). jorin will include the Skill descriptions in the system prompt.
+
+Situations are executable context providers that emit prompt snippets. Create
+them under ~/.jorin/situations or ./.jorin/situations (project-specific).
+Each situation lives in its own folder with a SITUATION.yaml metadata file and
+an executable referenced by the run field. When the executable prints output,
+jorin wraps it in an XML-like tag matching the situation name.
+
+Example:
+
+```text
+~/.jorin/situations/php/SITUATION.yaml
+name: php
+description: Detect PHP projects via .php-version.
+run: run
+```
+
+```bash
+~/.jorin/situations/php/run
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -f ".php-version" ]]; then
+  echo "This is a PHP project, requiring version $(cat .php-version) at minimum."
+fi
+```

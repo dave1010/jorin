@@ -1,0 +1,3 @@
+name: go
+description: Detect Go modules/workspaces in the current directory.
+run: run
