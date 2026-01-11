@@ -11,42 +11,40 @@ type skillMetadata struct {
 	description string
 }
 
-// skillsProvider appends skill descriptions from ~/.jorin/skills.
+// skillsProvider appends skill descriptions from ~/.jorin/skills and ./.jorin/skills.
 type skillsProvider struct{}
 
 func (skillsProvider) Provide() string {
-	skillsDir, err := skillsDirPath()
-	if err != nil {
-		return ""
-	}
-	entries, err := os.ReadDir(skillsDir)
-	if err != nil {
-		return ""
-	}
 	var skills []skillMetadata
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		skillPath := filepath.Join(skillsDir, entry.Name(), "SKILL.md")
-		content, err := os.ReadFile(skillPath)
+	for _, skillsDir := range skillsDirPaths() {
+		entries, err := os.ReadDir(skillsDir)
 		if err != nil {
 			continue
 		}
-		name, desc := parseSkillFrontmatter(string(content))
-		if name == "" {
-			name = entry.Name()
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			skillPath := filepath.Join(skillsDir, entry.Name(), "SKILL.md")
+			content, err := os.ReadFile(skillPath)
+			if err != nil {
+				continue
+			}
+			name, desc := parseSkillFrontmatter(string(content))
+			if name == "" {
+				name = entry.Name()
+			}
+			if desc == "" {
+				continue
+			}
+			skills = append(skills, skillMetadata{name: name, description: desc})
 		}
-		if desc == "" {
-			continue
-		}
-		skills = append(skills, skillMetadata{name: name, description: desc})
 	}
 	if len(skills) == 0 {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("## Skills\nYou have new skills. If any skill might be relevant then you MUST read `~/.jorin/skills/<skill-name>/SKILL.md`. Skills available:\n")
+	b.WriteString("## Skills\nYou have new skills. If any skill might be relevant then you MUST read the corresponding SKILL.md from `./.jorin/skills/<skill-name>/SKILL.md` or `~/.jorin/skills/<skill-name>/SKILL.md`. Skills available:\n")
 	for _, skill := range skills {
 		b.WriteString("- ")
 		b.WriteString(skill.name)
@@ -57,12 +55,15 @@ func (skillsProvider) Provide() string {
 	return strings.TrimSpace(b.String())
 }
 
-func skillsDirPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+func skillsDirPaths() []string {
+	paths := []string{}
+	if wd, err := os.Getwd(); err == nil {
+		paths = append(paths, filepath.Join(wd, ".jorin", "skills"))
 	}
-	return filepath.Join(home, ".jorin", "skills"), nil
+	if home, err := os.UserHomeDir(); err == nil {
+		paths = append(paths, filepath.Join(home, ".jorin", "skills"))
+	}
+	return paths
 }
 
 func parseSkillFrontmatter(content string) (string, string) {

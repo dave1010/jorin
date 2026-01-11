@@ -5,7 +5,7 @@ This file summarizes notable project changes grouped into semantic version-style
 ## Unreleased
 
 - Docs: added a comprehensive CLI reference and troubleshooting guide, and linked them from README and usage docs.
-- Prompt providers: added support for personal Skills under ~/.jorin/skills, adding their descriptions to the system prompt.
+- Prompt providers: added support for personal Skills under ~/.jorin/skills and ./.jorin/skills, adding their descriptions to the system prompt.
 - Prompt providers: added executable Situations (from ~/.jorin/situations and ./.jorin/situations) that emit tagged prompt context.
 - Prompt providers: moved runtime env/git/tooling context into built-in Situations under ./.jorin/situations.
 

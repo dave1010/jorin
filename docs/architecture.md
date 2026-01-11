@@ -29,11 +29,11 @@ without modifying core code.
 - Providers are concatenated in registration order with blank lines between
   sections.
 - Default providers include the immutable base instructions, AGENTS.md (when
-  present), personal Skills from ~/.jorin/skills (SKILL.md descriptions), and
-  Situations from ~/.jorin/situations and ./.jorin/situations (executables that
-  emit contextual snippets wrapped in XML-like tags). The repository ships
-  runtime context Situations in .jorin/situations for git status, OS uname, and
-  tools on PATH.
+  present), personal Skills from ~/.jorin/skills and ./.jorin/skills (SKILL.md
+  descriptions), and Situations from ~/.jorin/situations and ./.jorin/situations
+  (executables that emit contextual snippets wrapped in XML-like tags). The
+  repository ships runtime context Situations in .jorin/situations for git
+  status, OS uname, and tools on PATH.
 
 This is designed for future plugin integration: a plugin can register a
 provider during its init/startup to contribute to the system prompt.
