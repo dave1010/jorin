@@ -46,7 +46,7 @@ func (skillsProvider) Provide() string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("Skills available (from ~/.jorin/skills):\n")
+	b.WriteString("## Skills\nYou have new skills. If any skill might be relevant then you MUST read `~/.jorin/skills/<skill-name>/SKILL.md`. Skills available:\n")
 	for _, skill := range skills {
 		b.WriteString("- ")
 		b.WriteString(skill.name)
