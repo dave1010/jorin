@@ -173,6 +173,7 @@ Situations are executable context providers that emit prompt snippets. Create
 them under `~/.jorin/situations` or `./.jorin/situations` (project-specific).
 Each situation lives in its own folder with a `SITUATION.yaml` metadata file
 and an executable referenced by the `run` field.
+For shared examples and patterns, see https://github.com/dave1010/agent-situations.
 
 - The `run` field is required; situations without it are ignored.
 - The executable runs from the current working directory and receives

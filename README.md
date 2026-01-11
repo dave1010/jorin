@@ -90,7 +90,8 @@ Jorin can load optional prompt context from two conventions:
   directories containing a `SITUATION.yaml` file and an executable referenced
   by its `run` field. The executable output is wrapped in `<name>...</name>`
   tags and appended to the system prompt. The repo ships built-in situations
-  under `./.jorin/situations` (env, execs, git, go).
+  under `./.jorin/situations` (env, execs, git, go). See
+  https://github.com/dave1010/agent-situations for shared Situation patterns.
 
 For more usage details and setup steps, see docs/usage.md.
 
