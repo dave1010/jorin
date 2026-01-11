@@ -149,18 +149,40 @@ If you maintain repository-specific guidance, add an AGENTS.md file to the
 project root — jorin will append the contents to the system prompt when run
 from that repository.
 
-You can also add personal Skills under ~/.jorin/skills or ./.jorin/skills. Each
-Skill should live in its own folder with a SKILL.md that includes YAML
-frontmatter (name and description). jorin will include the Skill descriptions
-in the system prompt.
+## Skills and Situations
+
+Jorin supports two prompt-context conventions: Skills (Anthropic) and Situations
+(Jorin-specific).
+
+### Skills (Anthropic convention)
+
+Skills live under `~/.jorin/skills` or `./.jorin/skills`, one directory per
+skill. Each skill directory must include a `SKILL.md` with YAML frontmatter
+(`name`, `description`).
+
+- The `description` is required; skills without a description are skipped.
+- The `name` defaults to the directory name when omitted.
+- Jorin injects the skill descriptions into the system prompt and instructs the
+  agent to read the full `SKILL.md` when a skill is relevant.
+
+Anthropic reference: https://code.claude.com/docs/en/skills
+
+### Situations (Jorin convention)
 
 Situations are executable context providers that emit prompt snippets. Create
-them under ~/.jorin/situations or ./.jorin/situations (project-specific).
-Each situation lives in its own folder with a SITUATION.yaml metadata file and
-an executable referenced by the run field. When the executable prints output,
-jorin wraps it in an XML-like tag matching the situation name.
-The repository ships built-in runtime Situations in .jorin/situations for
-reporting git status, OS uname, and tools available on PATH.
+them under `~/.jorin/situations` or `./.jorin/situations` (project-specific).
+Each situation lives in its own folder with a `SITUATION.yaml` metadata file
+and an executable referenced by the `run` field.
+
+- The `run` field is required; situations without it are ignored.
+- The executable runs from the current working directory and receives
+  `JORIN_PWD` pointing at that directory.
+- Output is wrapped in `<name>...</name>` tags and appended to the system
+  prompt. `name` defaults to the directory name when omitted.
+
+The repository ships built-in situations under `./.jorin/situations` for
+reporting git status, runtime environment, available executables, and Go module
+detection.
 
 Example:
 

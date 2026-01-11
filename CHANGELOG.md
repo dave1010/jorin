@@ -4,6 +4,7 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- Docs: cleaned up README and usage docs, with updated Skills/Situations guidance and built-in situation list.
 - Docs: added a comprehensive CLI reference and troubleshooting guide, and linked them from README and usage docs.
 - Docs: added a Situations skill guide for creating and editing Situations.
 - Prompt providers: added support for personal Skills under ~/.jorin/skills and ./.jorin/skills, adding their descriptions to the system prompt.
