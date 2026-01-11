@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -n "${PWD:-}" ]]; then
+  printf "PWD: %s\n" "${PWD}"
+fi
+
+if [[ -e ".git" ]]; then
+  echo "Git repository: yes (.git exists)"
+else
+  echo "Git repository: no (.git not found)"
+fi

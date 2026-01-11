@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+tools_list=(ag rg git gh go gofmt docker fzf python python3 php curl wget)
+found=()
+
+for tool in "${tools_list[@]}"; do
+  if command -v "${tool}" >/dev/null 2>&1; then
+    found+=("${tool}")
+  fi
+done
+
+if [[ ${#found[@]} -gt 0 ]]; then
+  joined=$(IFS=,; echo "${found[*]}")
+  echo "Tools on PATH (others will exist too): ${joined}"
+  exit 0
+fi
+
+joined=$(IFS=,; echo "${tools_list[*]}")
+echo "Tools on PATH: none of ${joined}"

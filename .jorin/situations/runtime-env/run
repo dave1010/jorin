@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v uname >/dev/null 2>&1; then
+  echo "Current env: $(uname -a)"
+  exit 0
+fi
+
+os_name="${OSTYPE:-unknown}"
+arch_name="${HOSTTYPE:-unknown}"
+echo "Current env: OS: ${os_name} ${arch_name}"
