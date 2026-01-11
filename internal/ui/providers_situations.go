@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,18 +35,38 @@ func (situationsProvider) Provide() string {
 		}
 		run := entry.metadata.run
 		if run == "" {
+			// nothing to run; add debug block so it's visible during development
+			outputs = append(outputs, "\u003c"+name+"-debug\u003e\nno run field in SITUATION.yaml\n\u003c/"+name+"-debug\u003e")
 			continue
 		}
 		runPath := filepath.Join(entry.dir, run)
 		out, err := execSituation(runPath)
-		if err != nil {
-			continue
-		}
 		trimmed := strings.TrimSpace(out)
+		if err != nil {
+			// collect debug information (error and any output/stderr)
+			statInfo := ""
+			if fi, statErr := os.Stat(runPath); statErr == nil {
+				statInfo = fmt.Sprintf("mode=%v size=%d", fi.Mode(), fi.Size())
+			} else {
+				statInfo = fmt.Sprintf("stat error: %v", statErr)
+			}
+			debug := fmt.Sprintf("\u003c%s-error\u003e\npath: %s\nerror: %v\n%s\noutput:\n%s\n\u003c/%s-error\u003e", name, runPath, err, statInfo, strings.TrimSpace(out), name)
+			// if there is meaningful stdout/stderr, include it as the main output as well
+			if trimmed == "" {
+				outputs = append(outputs, debug)
+				continue
+			} else {
+				outputs = append(outputs, "\u003c"+name+"\u003e\n"+trimmed+"\n\u003c/"+name+"\u003e")
+				outputs = append(outputs, debug)
+				continue
+			}
+		}
 		if trimmed == "" {
+			// include a debug block so empty output cases are visible during troubleshooting
+			outputs = append(outputs, "\u003c"+name+"-debug\u003e\nempty output from run: "+runPath+"\n\u003c/"+name+"-debug\u003e")
 			continue
 		}
-		outputs = append(outputs, "<"+name+">\n"+trimmed+"\n</"+name+">")
+		outputs = append(outputs, "\u003c"+name+"\u003e\n"+trimmed+"\n\u003c/"+name+"\u003e")
 	}
 	if len(outputs) == 0 {
 		return ""
@@ -126,14 +147,39 @@ func execSituation(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// Try executing the path directly first. On some platforms (eg Android/Termux)
+	// the interpreter referenced by a shebang (e.g. /usr/bin/env) may not exist
+	// at that exact path which causes exec to fail with "no such file or directory".
+	// In that case fall back to running the script via common shells.
 	cmd := exec.Command(path)
 	cmd.Dir = wd
 	cmd.Env = append(os.Environ(), "JORIN_PWD="+wd)
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return string(out), nil
 	}
-	return string(out), nil
+
+	// Attempt common fallbacks: bash then sh
+	cmd = exec.Command("bash", path)
+	cmd.Dir = wd
+	cmd.Env = append(os.Environ(), "JORIN_PWD="+wd)
+	out2, err2 := cmd.CombinedOutput()
+	if err2 == nil {
+		return string(out2), nil
+	}
+
+	cmd = exec.Command("sh", path)
+	cmd.Dir = wd
+	cmd.Env = append(os.Environ(), "JORIN_PWD="+wd)
+	out3, err3 := cmd.CombinedOutput()
+	if err3 == nil {
+		return string(out3), nil
+	}
+
+	// If none succeeded, return the outputs we have and the original error.
+	combined := strings.TrimSpace(string(out) + "\n" + string(out2) + "\n" + string(out3))
+	return combined, err
 }
 
 func init() {
