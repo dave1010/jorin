@@ -149,9 +149,10 @@ If you maintain repository-specific guidance, add an AGENTS.md file to the
 project root — jorin will append the contents to the system prompt when run
 from that repository.
 
-You can also add personal Skills under ~/.jorin/skills. Each Skill should live
-in its own folder with a SKILL.md that includes YAML frontmatter (name and
-description). jorin will include the Skill descriptions in the system prompt.
+You can also add personal Skills under ~/.jorin/skills or ./.jorin/skills. Each
+Skill should live in its own folder with a SKILL.md that includes YAML
+frontmatter (name and description). jorin will include the Skill descriptions
+in the system prompt.
 
 Situations are executable context providers that emit prompt snippets. Create
 them under ~/.jorin/situations or ./.jorin/situations (project-specific).
