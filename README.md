@@ -76,6 +76,7 @@ jorin --readonly "Make a small change to main.go"
 ```
 
 For more usage details see docs/.
+For personal prompt context (Skills and Situations), see docs/usage.md.
 
 ## Development
 

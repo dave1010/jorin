@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -f "go.mod" ]]; then
+  module_name="$(awk 'NR==1 { print $2 }' go.mod)"
+  if [[ -n "${module_name}" ]]; then
+    echo "Go module detected: ${module_name}."
+  else
+    echo "Go module detected (go.mod present)."
+  fi
+  exit 0
+fi
+
+if [[ -f "go.work" ]]; then
+  echo "Go workspace detected (go.work present)."
+fi
