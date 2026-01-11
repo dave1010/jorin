@@ -4,6 +4,8 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+## v0.0.9 - 2026-01-11
+
 - Docs: cleaned up README and usage docs, with updated Skills/Situations guidance and built-in situation list.
 - Docs: added a comprehensive CLI reference and troubleshooting guide, and linked them from README and usage docs.
 - Docs: added a Situations skill guide for creating and editing Situations.
