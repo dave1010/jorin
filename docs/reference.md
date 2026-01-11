@@ -53,7 +53,7 @@ Built-in commands:
 
 - `/help` or `/help <topic>`: Show available commands and help topics.
 - `/history [n]`: List the last `n` prompts (or all stored history).
-- `/debug`: Print the full system prompt (including AGENTS.md content and Skill descriptions).
+- `/debug`: Print the full system prompt (including AGENTS.md content, Skill descriptions, and Situation output).
 
 Plugin-provided commands:
 

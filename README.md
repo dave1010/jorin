@@ -76,7 +76,23 @@ jorin --readonly "Make a small change to main.go"
 ```
 
 For more usage details see docs/.
-For personal prompt context (Skills and Situations), see docs/usage.md.
+
+## Skills and Situations
+
+Jorin can load optional prompt context from two conventions:
+
+- **Skills** (Anthropic convention): `~/.jorin/skills` or `./.jorin/skills` with a
+  `SKILL.md` file that contains YAML frontmatter (`name`, `description`). Jorin
+  injects the descriptions into the system prompt and instructs the agent to
+  read the full skill file when relevant. See
+  https://code.claude.com/docs/en/skills for the Skills convention.
+- **Situations** (Jorin-specific): `~/.jorin/situations` or `./.jorin/situations`
+  directories containing a `SITUATION.yaml` file and an executable referenced
+  by its `run` field. The executable output is wrapped in `<name>...</name>`
+  tags and appended to the system prompt. The repo ships built-in situations
+  under `./.jorin/situations` (env, execs, git, go).
+
+For more usage details and setup steps, see docs/usage.md.
 
 ## Development
 
