@@ -1,6 +1,6 @@
 # `jorin`
 
-![jorin screenshot](docs/jorin-screenshot.png)
+![Logo](docs/jorin-logo-and-name.png)
 
 Jorin is a small coding agent written in Go.
 
@@ -15,6 +15,8 @@ containers and on mobile devices.
 Jorin also serves as a research prototype for agent techniques such as
 [Skills to Agents](https://dave.engineer/blog/2025/11/skills-to-agents/)
 and [Agent Situations](https://github.com/dave1010/agent-situations).
+
+![jorin screenshot](docs/jorin-screenshot.png)
 
 ## Documentation
 
@@ -80,3 +82,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) and follow the
 ## License
 
 MIT
+
+## Colophon
+
+"Jorin" is pronounced "jorin", not "JOR-in" or "jor-IN". Say it quickly, but not so quickly that it feels rushed: Jorin. That's it! The name comes from looking at my keyboard and trying to find something without too many Google results.
