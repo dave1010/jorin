@@ -1,82 +1,253 @@
 # Usage
 
-This document covers typical user-facing ways to run and interact with jorin.
+This document covers how to run and interact with jorin from the command line.
 
 ## Quick start
-
-Build the CLI (or download a release):
-
-```bash
-make build
-# or
-go build -o jorin ./cmd/jorin
-```
 
 Show help:
 
 ```bash
-./jorin --help
+jorin --help
 ```
 
 Start the REPL (default when invoked with no args):
 
 ```bash
-./jorin --repl
-# or simply
-./jorin
+jorin
 ```
 
 Send a single prompt from the command line or a script:
 
 ```bash
-./jorin "Refactor function X to be smaller"
+jorin "Refactor function X to be smaller"
 # or
-echo "Add logging to foo()" | ./jorin
+echo "Add logging to foo()" | jorin
 ```
 
-## Key runtime flags
+## Configuration
 
-- --model: Model ID (default: gpt-5-mini)
-- --repl: Start an interactive REPL
-- --readonly: Disallow write_file operations
-- --dry-shell: Do not execute shell commands (shell calls reported as dry run)
-- --allow (repeatable): Allowlist substring for shell commands
-- --deny (repeatable): Denylist substring for shell commands
-- --cwd: Working directory for tools
+Set these environment variables before running jorin:
 
-Use --readonly and --dry-shell together when running in untrusted or shared
-environments.
+| Variable | Purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | API key for OpenAI-compatible endpoints. Required. |
+| `OPENAI_BASE_URL` | Overrides the API base URL (default: `https://api.openai.com`). |
+| `NO_COLOR` | Disables ANSI color output when set. |
+| `TERM` | If set to `dumb`, disables color output. |
 
-## REPL details
+## CLI reference
 
-- Interactive terminal (tty): full line editing (cursor movement, history,
-  Ctrl-C to abort input).
-- Non-interactive (piped): falls back to a simple scanner mode suitable for
-  deterministic scripting and tests.
-- Slash commands: supported with prefix `/` (e.g. `/help`, `/history`). Escape
-  the prefix with a backslash to send a literal slash (e.g. `\/help`).
-- Legacy `!` prefix: lines starting with `!` are treated as shell commands.
-- /debug: prints the full system prompt (including AGENTS.md content).
+### Invocation modes
+
+- **REPL (interactive)**: Start with no args or `--repl`.
+- **Single prompt**: Provide a quoted prompt or pipe stdin. Remaining CLI args
+  are joined into the prompt string.
+
+Examples:
+
+```bash
+jorin --repl
+jorin "Summarize the last test run"
+echo "Add logging to foo()" | jorin
+```
+
+### Command-line flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--model` | `gpt-5-mini` | Model ID sent to the API. |
+| `--repl` | `false` | Start an interactive REPL. |
+| `--readonly` | `false` | Disallow `write_file` tool calls. |
+| `--dry-shell` | `false` | Do not execute shell commands (report them only). |
+| `--allow` | (none) | Allowlist substring for shell commands. Repeatable. |
+| `--deny` | (none) | Denylist substring for shell commands. Repeatable. |
+| `--cwd` | (empty) | Working directory for shell tool execution. |
+| `--version` | `false` | Print version and exit. |
+
+Notes:
+
+- If `--allow` is provided, every shell command must match at least one
+  allowlisted substring.
+- If `--deny` is provided, any substring match blocks execution.
+- `--cwd` applies to the `shell` tool only; read/write paths are used as given.
+
+## REPL commands
+
+Built-in commands:
+
+- `/help` or `/help <topic>`: Show available commands and help topics.
+- `/history [n]`: List the last `n` prompts (or all stored history).
+- `/debug`: Print the full system prompt (including AGENTS.md content, Skill
+  descriptions, and Situation output).
+
+Plugin-provided commands:
+
+- `/plugins`: List compiled-in plugins.
+- `/model`: Show the currently configured model.
+
+Plugin commands are only available when their plugin is compiled into the
+binary.
+
+## Examples
+
+Dry-run shell mode (agent reports shell commands but does not execute them):
+
+```bash
+jorin --dry-shell "Run the tests"
+```
+
+Prevent file writes (audit mode):
+
+```bash
+jorin --readonly "Make a small change to main.go"
+```
+
+Allow/deny list examples:
+
+```bash
+# Only allow shell commands containing the substring ALLOW_ME
+jorin --allow ALLOW_ME "Run the deployment script"
+
+# Deny commands containing dangerous substrings
+jorin --deny "rm -rf" --deny "passwd" "Audit the machine"
+```
+
+## Tool behavior
+
+The agent can invoke the following tools. Each tool returns structured JSON to
+the model (and a concise preview is written to stderr in the CLI).
+
+### `shell`
+
+Executes a shell command via `bash -lc`.
+
+Response fields:
+
+- `returncode`: integer exit status.
+- `stdout`: last 8000 characters of stdout.
+- `stderr`: last 8000 characters of stderr.
+
+Policy behavior:
+
+- `--dry-shell` returns `{ "dry_run": true, "cmd": "..." }`.
+- `--allow`/`--deny` are evaluated as substring matches before execution.
+
+### `read_file`
+
+Reads a UTF-8 text file from disk.
+
+Response fields:
+
+- `text`: file contents (truncated at 200,000 characters).
+- `truncated`: `true` when truncation occurs.
+
+### `write_file`
+
+Writes UTF-8 text to disk, creating parent directories as needed.
+
+Response fields:
+
+- `ok`: boolean success flag.
+- `bytes`: number of bytes written.
+
+Policy behavior:
+
+- `--readonly` returns `{ "error": "readonly session" }` without writing.
+
+### `http_get`
+
+Fetches a URL with a 15-second timeout and returns up to 8000 bytes.
+
+Response fields:
+
+- `status`: HTTP status code.
+- `body`: response body (truncated to 8000 bytes).
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success. |
+| `1` | Runtime or API error. |
+| `2` | No prompt provided outside REPL mode. |
+
+## Skills and Situations
+
+Jorin supports two prompt-context conventions: Skills (Anthropic) and
+Situations (Jorin-specific).
+
+### Skills (Anthropic convention)
+
+Skills live under `~/.jorin/skills` or `./.jorin/skills`, one directory per
+skill. Each skill directory must include a `SKILL.md` with YAML frontmatter
+(`name`, `description`).
+
+- The `description` is required; skills without a description are skipped.
+- The `name` defaults to the directory name when omitted.
+- Jorin injects the skill descriptions into the system prompt and instructs the
+  agent to read the full `SKILL.md` when a skill is relevant.
+
+Reference: [Claude Code Skills](https://code.claude.com/docs/en/skills)
+
+### Situations (Jorin convention)
+
+Situations are executable context providers that emit prompt snippets. Create
+them under `~/.jorin/situations` or `./.jorin/situations` (project-specific).
+Each situation lives in its own folder with a `SITUATION.yaml` metadata file
+and an executable referenced by the `run` field.
+
+- The `run` field is required; situations without it are ignored.
+- The executable runs from the current working directory and receives
+  `JORIN_PWD` pointing at that directory.
+- Output is wrapped in `<name>...</name>` tags and appended to the system
+  prompt. `name` defaults to the directory name when omitted.
+
+The repository ships built-in situations under `./.jorin/situations` for
+reporting git status, runtime environment, available executables, and Go module
+detection.
+
+Reference: [Agent Situations repository](https://github.com/dave1010/agent-situations)
+Blog: [Giving coding agents situational awareness (from shell prompts to agent prompts)](https://dave.engineer/blog/2026/01/agent-situations/)
+
+Example:
+
+```text
+~/.jorin/situations/php/SITUATION.yaml
+name: php
+description: Detect PHP projects via .php-version.
+run: run
+```
+
+```bash
+~/.jorin/situations/php/run
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -f ".php-version" ]]; then
+  echo "This is a PHP project, requiring version $(cat .php-version) at minimum."
+fi
+```
 
 ## Plugin system
 
-jorin supports compiled-in plugins that can register additional slash
-commands (including nested subcommands). Plugins are compiled into the binary
-and register themselves at init().
+Jorin supports compiled-in plugins that can register additional slash commands
+(including nested subcommands). Plugins are compiled into the binary and
+register themselves at init().
 
 Available plugin features:
 
 - Register top-level commands with a description and handler.
 - Register subcommands under a top-level command; subcommands also have their
   own descriptions and handlers.
-- Plugins can obtain runtime context like the current model by the host
-  setting a model provider callback.
+- Plugins can obtain runtime context like the current model by the host setting
+  a model provider callback.
 
 Provided built-in plugin:
 
 - model-plugin
   - /plugins — lists compiled-in plugins (name and description)
-  - /model — prints the currently selected model (reads from the host-provided model provider)
+  - /model — prints the currently selected model (reads from the host-provided
+    model provider)
 
 How to write and register a plugin (compiled-in)
 
@@ -112,94 +283,75 @@ Using help and plugin commands
 - /help — lists builtin help topics and plugin commands.
 - /help <topic> — shows builtin help for a topic (e.g. `repl`) or plugin help
   for a command with descriptions and subcommands.
-- Invoke plugin commands as usual: `/command` or include a subcommand `/command sub`.
+- Invoke plugin commands as usual: `/command` or include a subcommand
+  `/command sub`.
 
-## Examples
+## Troubleshooting
 
-Dry-run shell mode (agent reports shell commands but does not execute them):
+### API errors
 
-```bash
-./jorin --dry-shell "Run the tests"
-```
+#### `API 401` or `API 403`
 
-Prevent file writes (audit mode):
+Likely causes:
 
-```bash
-./jorin --readonly "Make a small change to main.go"
-```
+- Missing or invalid `OPENAI_API_KEY`.
+- An API key that is not authorized for the requested model.
 
-Allow/deny list examples:
+Fix:
 
-```bash
-# Only allow shell commands containing the substring ALLOW_ME
-./jorin --allow ALLOW_ME "Run the deployment script"
+- Export a valid API key and retry.
+- Verify your account has access to the selected model.
 
-# Deny commands containing dangerous substrings
-./jorin --deny "rm -rf" "passwd"
-```
+#### `API 429`
 
-For more details about advanced REPL usage, shell policy and tool
-permissions see the security and architecture docs:
+Likely causes:
 
-- [security.md](security.md)
-- [architecture.md](architecture.md)
-- [reference.md](reference.md)
+- Rate limits or quota exhaustion from the API provider.
 
-If you maintain repository-specific guidance, add an AGENTS.md file to the
-project root — jorin will append the contents to the system prompt when run
-from that repository.
+Fix:
 
-## Skills and Situations
+- Wait and retry, or switch to a different model/account with more quota.
 
-Jorin supports two prompt-context conventions: Skills (Anthropic) and Situations
-(Jorin-specific).
+#### `API 5xx`
 
-### Skills (Anthropic convention)
+Likely causes:
 
-Skills live under `~/.jorin/skills` or `./.jorin/skills`, one directory per
-skill. Each skill directory must include a `SKILL.md` with YAML frontmatter
-(`name`, `description`).
+- Temporary service outage.
 
-- The `description` is required; skills without a description are skipped.
-- The `name` defaults to the directory name when omitted.
-- Jorin injects the skill descriptions into the system prompt and instructs the
-  agent to read the full `SKILL.md` when a skill is relevant.
+Fix:
 
-Anthropic reference: https://code.claude.com/docs/en/skills
+- Retry after a short delay, or use a different `OPENAI_BASE_URL`.
 
-### Situations (Jorin convention)
+### Shell/tool issues
 
-Situations are executable context providers that emit prompt snippets. Create
-them under `~/.jorin/situations` or `./.jorin/situations` (project-specific).
-Each situation lives in its own folder with a `SITUATION.yaml` metadata file
-and an executable referenced by the `run` field.
-For shared examples and patterns, see https://github.com/dave1010/agent-situations.
+#### Command blocked by policy
 
-- The `run` field is required; situations without it are ignored.
-- The executable runs from the current working directory and receives
-  `JORIN_PWD` pointing at that directory.
-- Output is wrapped in `<name>...</name>` tags and appended to the system
-  prompt. `name` defaults to the directory name when omitted.
+If a tool call returns `{"error":"denied by policy"}` or
+`{"error":"not allowed by policy"}`, the `--allow` and `--deny` flags are
+intervening.
 
-The repository ships built-in situations under `./.jorin/situations` for
-reporting git status, runtime environment, available executables, and Go module
-detection.
+Fix:
 
-Example:
+- Remove or loosen `--deny` substrings.
+- Add an `--allow` substring that matches the full command.
 
-```text
-~/.jorin/situations/php/SITUATION.yaml
-name: php
-description: Detect PHP projects via .php-version.
-run: run
-```
+#### No file output
 
-```bash
-~/.jorin/situations/php/run
-#!/usr/bin/env bash
-set -euo pipefail
+If a `write_file` tool call returns `{"error":"readonly session"}`, the CLI
+was started with `--readonly`.
 
-if [[ -f ".php-version" ]]; then
-  echo "This is a PHP project, requiring version $(cat .php-version) at minimum."
-fi
-```
+Fix:
+
+- Remove the `--readonly` flag.
+
+### Color or formatting issues
+
+If you see garbled ANSI output or want plain text:
+
+- Set `NO_COLOR=1`, or
+- Use a terminal that does not report `TERM=dumb`.
+
+## Security notes
+
+For more details about shell policy and tool permissions, see the
+[Security notes](security.md).
