@@ -2,9 +2,19 @@
 
 ![jorin screenshot](docs/jorin-screenshot.png)
 
-Jorin is a small coding agent that calls tools (shell, read_file, write_file,
-http_get) and communicates with an OpenAI-compatible API. It is designed for
-use as a command-line tool and REPL.
+Jorin is a small coding agent written in Go.
+
+It calls tools, like `shell`, `read_file`, `write_file`,
+`http_get`) and communicates with an OpenAI-compatible API.
+It is designed for use as a composable command-line tool for shell scripts
+and also for interactive coding sessions.
+
+Jorin isn't designed to be your day-to-day coding agent for big projects.
+Instead, Jorin is designed to be ran in constrained environments like
+containers and on mobile devices.
+Jorin also serves as a research prototype for agent techniques such as
+[Skills to Agents](https://dave.engineer/blog/2025/11/skills-to-agents/)
+and [Agent Situations](https://github.com/dave1010/agent-situations).
 
 ## Documentation
 
