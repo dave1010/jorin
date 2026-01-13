@@ -1,5 +1,7 @@
 # `jorin`
 
+![jorin screenshot](docs/jorin-screenshot.png)
+
 Jorin is a small coding agent that calls tools (shell, read_file, write_file,
 http_get) and communicates with an OpenAI-compatible API. It is designed for
 use as a command-line tool and REPL.
