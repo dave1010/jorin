@@ -1,19 +1,17 @@
 # `jorin`
 
-A small coding agent that calls tools (shell, read_file, write_file, http_get)
-and communicates with an OpenAI-compatible API. Built to be used as a
-command-line tool and REPL.
+Jorin is a small coding agent that calls tools (shell, read_file, write_file,
+http_get) and communicates with an OpenAI-compatible API. It is designed for
+use as a command-line tool and REPL.
 
-This README focuses on user-facing instructions. Development and implementation
-details have been moved to the docs/ directory. See the docs links below for
-more information.
+## Documentation
 
-- Quick start and usage: [Usage guide](docs/usage.md)
-- CLI reference: [CLI reference](docs/reference.md)
-- Development: [Development guide](docs/development.md)
-- Security and tool permissions: [Security notes](docs/security.md)
-- Architecture overview: [Architecture overview](docs/architecture.md)
-- Troubleshooting: [Troubleshooting](docs/troubleshooting.md)
+- [Usage guide](docs/usage.md)
+- [Development and architecture](docs/development.md)
+- [Security notes](docs/security.md)
+- [Contributing](CONTRIBUTING.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Changelog](CHANGELOG.md)
 
 ## Install
 
@@ -27,6 +25,20 @@ Download the latest release for your platform from
 [GitHub Releases](https://github.com/dave1010/jorin/releases).
 
 Then add it to your $PATH.
+
+## Configuration
+
+Set your API key before running jorin:
+
+```bash
+export OPENAI_API_KEY="your-api-key"
+```
+
+To use a different OpenAI-compatible endpoint:
+
+```bash
+export OPENAI_BASE_URL="https://api.openai.com"
+```
 
 ## Quick start
 
@@ -42,77 +54,16 @@ Start the REPL (default when invoked with no args):
 jorin
 ```
 
-Send a single prompt from the command line or a script:
+Send a single prompt:
 
 ```bash
 jorin "Refactor function X to be smaller"
-# or
-echo "Add logging to foo()" | jorin
 ```
 
-## Common flags
+## Contributing
 
-- --model: Model ID (default: gpt-5-mini)
-- --repl: Start an interactive REPL
-- --readonly: Disallow write_file operations
-- --dry-shell: Do not execute shell commands (shell calls reported as dry run)
-- --allow (repeatable): Allowlist substring for shell commands
-- --deny (repeatable): Denylist substring for shell commands
-- --cwd: Working directory for tools
-
-## Examples
-
-Dry-run shell mode:
-
-```bash
-jorin --dry-shell "Run the tests"
-```
-
-Prevent file writes:
-
-```bash
-jorin --readonly "Make a small change to main.go"
-```
-
-For more usage details, see the [usage guide](docs/usage.md).
-
-## Skills and Situations
-
-Jorin can load optional prompt context from two conventions:
-
-- **Skills** (Anthropic convention): `~/.jorin/skills` or `./.jorin/skills` with a
-  `SKILL.md` file that contains YAML frontmatter (`name`, `description`). Jorin
-  injects the descriptions into the system prompt and instructs the agent to
-  read the full skill file when relevant. See
-  <https://code.claude.com/docs/en/skills> for the Skills convention.
-- **Situations** (Jorin-specific): `~/.jorin/situations` or `./.jorin/situations`
-  directories containing a `SITUATION.yaml` file and an executable referenced
-  by its `run` field. The executable output is wrapped in `<name>...</name>`
-  tags and appended to the system prompt. The repo ships built-in situations
-  under `./.jorin/situations` (env, execs, git, go). See
-  <https://github.com/dave1010/agent-situations> and
-  <https://dave.engineer/blog/2026/01/agent-situations/> for information on
-  Situations.
-
-For more usage details and setup steps, see the
-[usage guide](docs/usage.md).
-
-## Development
-
-### Requirements
-
-- Go toolchain (1.20+ recommended)
-- GNU Make (optional)
-
-## Building
-
-Build the CLI:
-
-```bash
-make build
-# or
-go build -o jorin ./cmd/jorin
-```
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) and follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
