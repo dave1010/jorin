@@ -43,6 +43,8 @@ make test
 go test ./...
 ```
 
+Integration tests use mock OpenAI servers and local fixtures to validate system prompt composition and tool-call flows end-to-end.
+
 ## Make targets
 
 - build: compile binary
