@@ -4,6 +4,8 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- Tests: added an integration test suite that exercises system prompt composition and tool-call interactions via mock OpenAI servers.
+
 ## v0.0.9 - 2026-01-11
 
 - Docs: cleaned up README and usage docs, with updated Skills/Situations guidance and built-in situation list.
