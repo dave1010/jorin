@@ -5,6 +5,7 @@ This file summarizes notable project changes grouped into semantic version-style
 ## Unreleased
 
 - Tests: added an integration test suite that exercises system prompt composition and tool-call interactions via mock OpenAI servers.
+- Tests: expanded tool-calling integration coverage for string argument fallback and unknown tool handling.
 
 ## v0.0.9 - 2026-01-11
 
