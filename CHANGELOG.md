@@ -7,6 +7,7 @@ This file summarizes notable project changes grouped into semantic version-style
 - Refactor: extracted system prompt providers into internal/prompt, moved REPL core and commands into internal/repl, and introduced internal/app for wiring.
 - Tests: added an integration test suite that exercises system prompt composition and tool-call interactions via mock OpenAI servers.
 - Tests: expanded tool-calling integration coverage for string argument fallback and unknown tool handling.
+- Tests: added integration coverage for app runs, REPL command handling, and history output.
 
 ## v0.0.9 - 2026-01-11
 
