@@ -1,4 +1,4 @@
-package ui
+package prompt
 
 // systemPromptBase contains the immutable core instructions for the agent.
 const systemPromptBase = `You are Jorin, an advanced coding agent with the ability to complete tasks.

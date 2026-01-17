@@ -1,4 +1,4 @@
-package ui
+package repl
 
 // Config holds REPL configuration.
 type Config struct {

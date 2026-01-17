@@ -1,4 +1,4 @@
-package ui
+package repl
 
 import (
 	"bufio"

@@ -1,4 +1,4 @@
-package ui
+package repl
 
 import (
 	"bytes"
@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/dave1010/jorin/internal/agent"
+	"github.com/dave1010/jorin/internal/prompt"
+	"github.com/dave1010/jorin/internal/repl/commands"
 	"github.com/dave1010/jorin/internal/types"
-	"github.com/dave1010/jorin/internal/ui/commands"
 )
 
 // minimal mock agent that echoes last user message
@@ -30,7 +31,7 @@ func TestREPLHandlerDispatch(t *testing.T) {
 	cfg := DefaultConfig()
 	// create handler with history
 	hist := NewMemHistory(10)
-	h := commands.NewDefaultHandler(out, errOut, hist, SystemPrompt)
+	h := commands.NewDefaultHandler(out, errOut, hist, prompt.SystemPrompt)
 	ctx := context.Background()
 	// run StartREPL in the same goroutine; it will exit on EOF
 	var a agent.Agent = &mockAgent{}

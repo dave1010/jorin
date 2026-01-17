@@ -11,7 +11,7 @@ import (
 )
 
 // History is a lightweight local interface used by handlers. It is purposely
-// defined here to avoid importing the ui package and creating an import
+// defined here to avoid importing the repl package and creating an import
 // cycle. Any type implementing Add(line string) and List(limit int) []string
 // can be passed.
 type History interface {
@@ -23,7 +23,7 @@ type History interface {
 // and writes responses to out/errOut. It uses the provided History for
 // '/history' command. getSystemPrompt is a callback that returns the current
 // system prompt; it's supplied by the caller to avoid an import cycle with the
-// ui package.
+// prompt package.
 func NewDefaultHandler(out io.Writer, errOut io.Writer, hist History, getSystemPrompt func() string) Handler {
 	return &defaultHandler{out: out, errOut: errOut, hist: hist, sysPrompt: getSystemPrompt}
 }
