@@ -7,12 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dave1010/jorin/internal/agent"
-	"github.com/dave1010/jorin/internal/openai"
-	"github.com/dave1010/jorin/internal/plugins"
+	"github.com/dave1010/jorin/internal/app"
 	"github.com/dave1010/jorin/internal/types"
-	"github.com/dave1010/jorin/internal/ui"
-	cmdcommands "github.com/dave1010/jorin/internal/ui/commands"
 	"github.com/dave1010/jorin/internal/version"
 )
 
@@ -35,53 +31,35 @@ func main() {
 		return
 	}
 
-	// make plugin system aware of the current model
-	plugins.SetModelProvider(func() string { return *model })
-
-	pol := &types.Policy{Readonly: *readonly, DryShell: *dry, Allow: *allow, Deny: *deny, CWD: *cwd}
-
-	// prepare handler and history
-	cfg := ui.DefaultConfig()
-	hist := ui.NewMemHistory(200)
-	// pass ui.SystemPrompt as callback so handler can print it for /debug
-	handler := cmdcommands.NewDefaultHandler(os.Stdout, os.Stderr, hist, ui.SystemPrompt)
-	// default agent based on openai package
-	agentImpl := &openai.DefaultAgent{}
-
-	// If program invoked with no args at all, behave as if --repl was provided.
-	if len(os.Args) == 1 {
-		if err := ui.StartREPL(context.Background(), agentImpl, *model, pol, os.Stdin, os.Stdout, os.Stderr, cfg, handler, hist); err != nil {
-			fmt.Fprintln(os.Stderr, "ERR:", err)
-			os.Exit(1)
-		}
-		return
-	}
-
-	if *repl {
-		if err := ui.StartREPL(context.Background(), agentImpl, *model, pol, os.Stdin, os.Stdout, os.Stderr, cfg, handler, hist); err != nil {
-			fmt.Fprintln(os.Stderr, "ERR:", err)
-			os.Exit(1)
-		}
-		return
-	}
-
 	prompt := stringJoin(flag.Args(), " ")
-	if stringTrimSpace(prompt) == "" {
-		fmt.Fprintln(os.Stderr, "Provide a prompt or use --repl")
-		os.Exit(2)
+	opts := app.Options{
+		Model:  *model,
+		Prompt: prompt,
+		Repl:   *repl,
+		NoArgs: len(os.Args) == 1,
+		Policy: types.Policy{
+			Readonly: *readonly,
+			DryShell: *dry,
+			Allow:    *allow,
+			Deny:     *deny,
+			CWD:      *cwd,
+		},
+		Stdin:  os.Stdin,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
 	}
-	// fallback single-run prompt uses agent.RunAgent convenience; pass system prompt
-	out, err := agent.RunAgent(*model, prompt, ui.SystemPrompt(), pol)
-	if err != nil {
+	if err := app.Run(context.Background(), opts); err != nil {
+		if err == app.ErrMissingPrompt {
+			fmt.Fprintln(os.Stderr, "Provide a prompt or use --repl")
+			os.Exit(2)
+		}
 		fmt.Fprintln(os.Stderr, "ERR:", err)
 		os.Exit(1)
 	}
-	fmt.Println(out)
 }
 
 // wrappers so main doesn't import strings package etc.
 func stringJoin(a []string, sep string) string { return strings.Join(a, sep) }
-func stringTrimSpace(s string) string          { return strings.TrimSpace(s) }
 
 // keep multi flag helpers
 type multiFlag []string

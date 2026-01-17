@@ -57,8 +57,11 @@ Integration tests use mock OpenAI servers and local fixtures to validate system 
 ## Repository layout
 
 - cmd/jorin: CLI entrypoint and flags
+- internal/app: application composition root (wires prompt, REPL, plugins, agent)
 - internal/agent: prompt construction, conversation state, tool orchestration
 - internal/openai: OpenAI-compatible client wrapper
+- internal/prompt: system prompt composition and provider registration
+- internal/repl: REPL loop, command parsing, history, terminal I/O
 - internal/tools: tool implementations and policy checks
 - internal/plugins: compiled-in plugin support
 
@@ -79,7 +82,7 @@ parts of the overall system prompt. This makes it easy to add project-specific
 instructions, runtime context, or plugin-provided guidance without modifying
 core code.
 
-- Providers implement ui.PromptProvider (Provide() string) and are registered
+- Providers implement prompt.PromptProvider (Provide() string) and are registered
   in init() functions.
 - Providers are concatenated in registration order with blank lines between
   sections.

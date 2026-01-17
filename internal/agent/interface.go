@@ -2,7 +2,7 @@ package agent
 
 import "github.com/dave1010/jorin/internal/types"
 
-// Agent is a minimal interface for an LLM backend used by the UI.
+// Agent is a minimal interface for an LLM backend used by the REPL.
 // Implementations should provide ChatSession similar to the previous
 // package-level function.
 type Agent interface {

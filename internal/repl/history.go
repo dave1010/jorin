@@ -1,4 +1,4 @@
-package ui
+package repl
 
 // simple in-memory history ring buffer
 
