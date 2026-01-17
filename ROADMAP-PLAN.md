@@ -1,5 +1,35 @@
 # JORIN ROADMAP  REFACTOR PLAN
 
+## Phase 1 — Namespace restructuring (UI/REPL/Prompt)
+
+Goal: Separate prompt composition, REPL concerns, and application wiring to clarify ownership and reduce dependency coupling.
+
+Steps:
+1. Create a new internal/prompt package that owns prompt composition and provider registration:
+   - Move prompt builders/composers out of internal/ui into internal/prompt.
+   - Move prompt provider interfaces/types into internal/prompt.
+   - Provide a clear public surface (e.g., prompt.Compose, prompt.Provider) with minimal REPL/UI dependencies.
+2. Move REPL command parsing/handling into a repl/commands namespace:
+   - Relocate internal/ui/commands into internal/repl/commands (or internal/repl/commands if keeping internal).
+   - Update any references from UI packages to depend on repl/commands instead of ui/commands.
+   - Ensure plugin command registration and parsing live under repl/commands.
+3. Create a dedicated repl package for REPL loop, history, and terminal I/O:
+   - Move REPL loop and history logic out of internal/ui into internal/repl.
+   - Keep terminal I/O abstractions in internal/repl/terminal (or similar) and make them injectable for tests.
+   - Ensure REPL package depends on prompt and repl/commands, not internal/ui.
+4. Add an application composition root:
+   - Create internal/app (or internal/application) to wire agents, plugins, prompt providers, and REPL setup.
+   - Move orchestration logic out of cmd/jorin/main.go so main only parses flags and calls app.Run.
+5. Update documentation to reflect new package responsibilities:
+   - Document the boundaries between internal/prompt, internal/repl, and internal/app in README.md.
+   - Update any architecture notes or diagrams to use the new namespaces.
+
+Acceptance criteria:
+- internal/ui no longer owns prompt composition, prompt providers, REPL loop/history, or command parsing.
+- REPL command parsing lives under repl/commands and is the only path for plugin command wiring.
+- main.go delegates wiring to a composition root (internal/app).
+- README/CHANGELOG reflect the new package layout and responsibilities.
+
 ## Phase 2 — REPL  UI improvements and slash commands
 
 - Add more comprehensive unit/integration tests for StartREPL flows (mock agent to validate forwarding and error handling across more scenarios).
