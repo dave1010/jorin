@@ -35,6 +35,10 @@ One line install:
 curl -fsSL https://get.jorin.ai | bash
 ```
 
+The installer will place `jorin` in `/usr/local/bin` when it can, otherwise it
+uses `~/.local/bin` and updates your shell profile to add it to `$PATH`.
+Set `JORIN_INSTALL_DIR` to override the install location.
+
 Download the latest release for your platform from
 [GitHub Releases](https://github.com/dave1010/jorin/releases).
 
