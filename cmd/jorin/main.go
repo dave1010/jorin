@@ -23,6 +23,8 @@ func main() {
 	allow := multi("allow", "Allowlist substring for shell (repeatable)")
 	deny := multi("deny", "Denylist substring for shell (repeatable)")
 	cwd := flag.String("cwd", "", "Working directory for tools")
+	promptFlag := flag.Bool("prompt", false, "Treat first argument as prompt text")
+	promptFileFlag := flag.Bool("prompt-file", false, "Treat first argument as a prompt file")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
 
@@ -31,8 +33,20 @@ func main() {
 		return
 	}
 
+	if *promptFlag && *promptFileFlag {
+		fmt.Fprintln(os.Stderr, "ERR: --prompt and --prompt-file cannot be used together")
+		os.Exit(2)
+	}
+
+	promptMode := promptModeAuto
+	if *promptFlag {
+		promptMode = promptModeText
+	} else if *promptFileFlag {
+		promptMode = promptModeFile
+	}
+
 	stdinIsTTY := isTTY(os.Stdin)
-	prompt, scriptArgs, err := resolvePrompt(flag.Args())
+	prompt, scriptArgs, err := resolvePrompt(flag.Args(), promptMode)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ERR:", err)
 		os.Exit(1)

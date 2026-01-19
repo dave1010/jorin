@@ -42,8 +42,10 @@ Set these environment variables before running jorin:
 - **REPL (interactive)**: Start with no args or `--repl`.
 - **Single prompt**: Provide a quoted prompt or pipe stdin. Remaining CLI args
   are joined into the prompt string.
-- **Script**: Point to an executable file whose first line is a `jorin` shebang.
-  The rest of the file becomes the prompt, and remaining args are passed along.
+- **Prompt file (auto)**: If the first arg is a readable file (not a directory),
+  the file contents become the prompt and remaining args are appended as
+  arguments. Use `--prompt` to disable auto file loading or `--prompt-file` to
+  require it.
 
 Examples:
 
@@ -52,23 +54,26 @@ jorin --repl
 jorin "Summarize the last test run"
 echo "Add logging to foo()" | jorin
 ./review-code.jorin --target src/
+jorin --prompt "review-code.jorin --target src/"
+jorin --prompt-file prompts/review-code.jorin --target src/
 ```
 
-### Scripts and stdin
+### Prompt files, scripts, and stdin
 
-Jorin can run prompt scripts when the first line is a shebang that invokes
-`jorin`:
+Jorin can load prompt files directly. If the file starts with a `jorin`
+shebang, the shebang line is ignored:
 
 ```bash
 #!/usr/bin/env jorin
 Ensure SOLID principles are followed.
 ```
 
-When you run the script, remaining arguments are appended to the prompt as
+When you run a prompt file, remaining arguments are appended to the prompt as
 arguments, and piped stdin is appended as stdin context:
 
 ```bash
 ./review-code.jorin --target src/ < notes.txt
+jorin prompts/review-code.jorin --target src/ < notes.txt
 ```
 
 To use stdin directly with a one-off prompt:
@@ -94,6 +99,8 @@ cat document.md | jorin
 | `--allow` | (none) | Allowlist substring for shell commands. Repeatable. |
 | `--deny` | (none) | Denylist substring for shell commands. Repeatable. |
 | `--cwd` | (empty) | Working directory for shell tool execution. |
+| `--prompt` | `false` | Treat the first argument as literal prompt text (disables prompt-file detection). |
+| `--prompt-file` | `false` | Treat the first argument as a prompt file (error if not a readable file). |
 | `--version` | `false` | Print version and exit. |
 
 Notes:

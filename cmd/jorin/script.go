@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"strings"
@@ -9,11 +10,33 @@ import (
 
 const jorinShebang = "jorin"
 
-func resolvePrompt(args []string) (string, []string, error) {
+type promptMode int
+
+const (
+	promptModeAuto promptMode = iota
+	promptModeText
+	promptModeFile
+)
+
+func resolvePrompt(args []string, mode promptMode) (string, []string, error) {
 	if len(args) == 0 {
+		if mode == promptModeFile {
+			return "", nil, errors.New("prompt file required")
+		}
 		return "", nil, nil
 	}
-	prompt, ok, err := loadScriptPrompt(args[0])
+	if mode == promptModeText {
+		return stringJoin(args, " "), nil, nil
+	}
+	if mode == promptModeFile {
+		prompt, _, err := loadPromptFile(args[0], true)
+		if err != nil {
+			return "", nil, err
+		}
+		return prompt, args[1:], nil
+	}
+
+	prompt, ok, err := loadPromptFile(args[0], false)
 	if err != nil {
 		return "", nil, err
 	}
@@ -23,27 +46,40 @@ func resolvePrompt(args []string) (string, []string, error) {
 	return stringJoin(args, " "), nil, nil
 }
 
-func loadScriptPrompt(path string) (string, bool, error) {
-	data, err := os.ReadFile(path)
+func loadPromptFile(path string, require bool) (string, bool, error) {
+	info, err := os.Stat(path)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
+		if !require && errors.Is(err, fs.ErrNotExist) {
 			return "", false, nil
 		}
 		return "", false, err
 	}
+	if info.IsDir() {
+		if require {
+			return "", false, fmt.Errorf("prompt file is a directory: %s", path)
+		}
+		return "", false, nil
+	}
 
-	content := string(data)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", false, err
+	}
+	return parsePromptFile(string(data)), true, nil
+}
+
+func parsePromptFile(content string) string {
 	lines := strings.SplitN(content, "\n", 2)
 	header := strings.TrimSuffix(lines[0], "\r")
 	if !strings.HasPrefix(header, "#!") || !strings.Contains(header, jorinShebang) {
-		return "", false, nil
+		return content
 	}
 
 	body := ""
 	if len(lines) == 2 {
 		body = strings.TrimLeft(lines[1], "\r\n")
 	}
-	return body, true, nil
+	return body
 }
 
 func isTTY(f *os.File) bool {
