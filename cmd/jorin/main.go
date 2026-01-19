@@ -31,12 +31,19 @@ func main() {
 		return
 	}
 
-	prompt := stringJoin(flag.Args(), " ")
+	stdinIsTTY := isTTY(os.Stdin)
+	prompt, scriptArgs, err := resolvePrompt(flag.Args())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "ERR:", err)
+		os.Exit(1)
+	}
+	noArgs := len(flag.Args()) == 0 && stdinIsTTY
 	opts := app.Options{
-		Model:  *model,
-		Prompt: prompt,
-		Repl:   *repl,
-		NoArgs: len(os.Args) == 1,
+		Model:      *model,
+		Prompt:     prompt,
+		Repl:       *repl,
+		NoArgs:     noArgs,
+		ScriptArgs: scriptArgs,
 		Policy: types.Policy{
 			Readonly: *readonly,
 			DryShell: *dry,
@@ -44,9 +51,10 @@ func main() {
 			Deny:     *deny,
 			CWD:      *cwd,
 		},
-		Stdin:  os.Stdin,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+		Stdin:      os.Stdin,
+		StdinIsTTY: stdinIsTTY,
+		Stdout:     os.Stdout,
+		Stderr:     os.Stderr,
 	}
 	if err := app.Run(context.Background(), opts); err != nil {
 		if err == app.ErrMissingPrompt {

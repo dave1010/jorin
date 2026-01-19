@@ -42,6 +42,8 @@ Set these environment variables before running jorin:
 - **REPL (interactive)**: Start with no args or `--repl`.
 - **Single prompt**: Provide a quoted prompt or pipe stdin. Remaining CLI args
   are joined into the prompt string.
+- **Script**: Point to an executable file whose first line is a `jorin` shebang.
+  The rest of the file becomes the prompt, and remaining args are passed along.
 
 Examples:
 
@@ -49,6 +51,36 @@ Examples:
 jorin --repl
 jorin "Summarize the last test run"
 echo "Add logging to foo()" | jorin
+./review-code.jorin --target src/
+```
+
+### Scripts and stdin
+
+Jorin can run prompt scripts when the first line is a shebang that invokes
+`jorin`:
+
+```bash
+#!/usr/bin/env jorin
+Ensure SOLID principles are followed.
+```
+
+When you run the script, remaining arguments are appended to the prompt as
+arguments, and piped stdin is appended as stdin context:
+
+```bash
+./review-code.jorin --target src/ < notes.txt
+```
+
+To use stdin directly with a one-off prompt:
+
+```bash
+cat document.md | jorin "Summarize the text"
+```
+
+If you omit the prompt entirely, piped stdin becomes the prompt:
+
+```bash
+cat document.md | jorin
 ```
 
 ### Command-line flags
