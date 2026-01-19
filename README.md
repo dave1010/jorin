@@ -86,10 +86,16 @@ Pipe stdin into a prompt:
 cat document.md | jorin "Summarize the text"
 ```
 
-Run a Jorin script (shebang + prompt body):
+Run a Jorin prompt file (shebang optional):
 
 ```bash
 ./review-code.jorin --target src/
+```
+
+To force a literal prompt instead of loading a file, use `--prompt`:
+
+```bash
+jorin --prompt "./review-code.jorin --target src/"
 ```
 
 ## Contributing
