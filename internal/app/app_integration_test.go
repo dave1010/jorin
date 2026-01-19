@@ -150,6 +150,65 @@ func TestRunMissingPrompt(t *testing.T) {
 	}
 }
 
+func TestRunPromptIncludesArgsAndStdin(t *testing.T) {
+	llm := &recordingLLM{}
+	withTestLLM(t, llm)
+
+	var stdout bytes.Buffer
+	opts := Options{
+		Model:      "test-model",
+		Prompt:     "summarize",
+		ScriptArgs: []string{"--format", "short"},
+		Policy:     types.Policy{},
+		Stdin:      strings.NewReader("doc text\n"),
+		StdinIsTTY: false,
+		Stdout:     &stdout,
+		Stderr:     &bytes.Buffer{},
+	}
+
+	if err := Run(context.Background(), opts); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	msgs := llm.Messages()
+	if len(msgs) != 1 || len(msgs[0]) < 2 {
+		t.Fatalf("expected messages to include prompt, got %#v", msgs)
+	}
+
+	expected := "summarize\n\nArguments: --format short\n\nStdin:\ndoc text"
+	if msgs[0][1].Content != expected {
+		t.Fatalf("expected prompt %q, got %q", expected, msgs[0][1].Content)
+	}
+}
+
+func TestRunUsesStdinWhenNoPrompt(t *testing.T) {
+	llm := &recordingLLM{}
+	withTestLLM(t, llm)
+
+	opts := Options{
+		Model:      "test-model",
+		Prompt:     "",
+		Policy:     types.Policy{},
+		Stdin:      strings.NewReader("input only\n"),
+		StdinIsTTY: false,
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+	}
+
+	if err := Run(context.Background(), opts); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	msgs := llm.Messages()
+	if len(msgs) != 1 || len(msgs[0]) < 2 {
+		t.Fatalf("expected messages to include prompt, got %#v", msgs)
+	}
+
+	if msgs[0][1].Content != "input only" {
+		t.Fatalf("expected stdin-only prompt, got %q", msgs[0][1].Content)
+	}
+}
+
 func TestRunREPLCommandsAndHistory(t *testing.T) {
 	llm := &recordingLLM{
 		response: func(msgs []types.Message) types.ChatResponse {

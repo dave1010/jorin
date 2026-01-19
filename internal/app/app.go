@@ -21,14 +21,16 @@ var ErrMissingPrompt = errors.New("provide a prompt or use --repl")
 
 // Options configures the application run.
 type Options struct {
-	Model  string
-	Prompt string
-	Repl   bool
-	NoArgs bool
-	Policy types.Policy
-	Stdin  io.Reader
-	Stdout io.Writer
-	Stderr io.Writer
+	Model      string
+	Prompt     string
+	Repl       bool
+	NoArgs     bool
+	ScriptArgs []string
+	Policy     types.Policy
+	Stdin      io.Reader
+	StdinIsTTY bool
+	Stdout     io.Writer
+	Stderr     io.Writer
 }
 
 // Run wires core dependencies and starts either the REPL or a single prompt run.
@@ -45,11 +47,21 @@ func Run(ctx context.Context, opts Options) error {
 		return repl.StartREPL(ctx, agentImpl, opts.Model, &opts.Policy, opts.Stdin, opts.Stdout, opts.Stderr, cfg, handler, hist)
 	}
 
-	if strings.TrimSpace(opts.Prompt) == "" {
+	stdinText := ""
+	if !opts.StdinIsTTY && opts.Stdin != nil {
+		data, err := io.ReadAll(opts.Stdin)
+		if err != nil {
+			return err
+		}
+		stdinText = string(data)
+	}
+
+	fullPrompt := buildPrompt(opts.Prompt, opts.ScriptArgs, stdinText)
+	if strings.TrimSpace(fullPrompt) == "" {
 		return ErrMissingPrompt
 	}
 
-	out, err := agent.RunAgent(opts.Model, opts.Prompt, prompt.SystemPrompt(), &opts.Policy)
+	out, err := agent.RunAgent(opts.Model, fullPrompt, prompt.SystemPrompt(), &opts.Policy)
 	if err != nil {
 		return err
 	}
@@ -57,4 +69,22 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 	return nil
+}
+
+func buildPrompt(prompt string, args []string, stdin string) string {
+	parts := []string{}
+	trimmedPrompt := strings.TrimSpace(prompt)
+	if trimmedPrompt != "" {
+		parts = append(parts, prompt)
+	}
+	if len(args) > 0 {
+		parts = append(parts, "Arguments: "+strings.Join(args, " "))
+	}
+	if trimmedPrompt == "" && len(args) == 0 && stdin != "" {
+		return strings.TrimRight(stdin, "\n")
+	}
+	if stdin != "" {
+		parts = append(parts, "Stdin:\n"+strings.TrimRight(stdin, "\n"))
+	}
+	return strings.Join(parts, "\n\n")
 }

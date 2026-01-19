@@ -4,6 +4,7 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- CLI: support stdin prompts and executable Jorin scripts with shebang parsing plus argument forwarding.
 - Refactor: extracted system prompt providers into internal/prompt, moved REPL core and commands into internal/repl, and introduced internal/app for wiring.
 - Tests: added an integration test suite that exercises system prompt composition and tool-call interactions via mock OpenAI servers.
 - Tests: expanded tool-calling integration coverage for string argument fallback and unknown tool handling.

@@ -74,6 +74,18 @@ Send a single prompt:
 jorin "Refactor function X to be smaller"
 ```
 
+Pipe stdin into a prompt:
+
+```bash
+cat document.md | jorin "Summarize the text"
+```
+
+Run a Jorin script (shebang + prompt body):
+
+```bash
+./review-code.jorin --target src/
+```
+
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) and follow the
