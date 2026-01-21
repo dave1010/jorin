@@ -27,6 +27,7 @@ func main() {
 	promptFlag := flag.Bool("prompt", false, "Treat first argument as prompt text")
 	promptFileFlag := flag.Bool("prompt-file", false, "Treat first argument as a prompt file")
 	ralph := flag.Bool("ralph", false, "Enable Ralph Wiggum loop instructions")
+	ralphMaxTries := flag.Int("ralph-max-tries", 8, "Maximum Ralph Wiggum loop iterations")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
 
@@ -42,6 +43,10 @@ func main() {
 
 	if *ralph {
 		prompt.EnableRalph()
+	}
+	if *ralphMaxTries < 1 {
+		fmt.Fprintln(os.Stderr, "ERR: --ralph-max-tries must be at least 1")
+		os.Exit(2)
 	}
 
 	promptMode := promptModeAuto
@@ -59,11 +64,12 @@ func main() {
 	}
 	noArgs := len(flag.Args()) == 0 && stdinIsTTY
 	opts := app.Options{
-		Model:      *model,
-		Prompt:     prompt,
-		Repl:       *repl,
-		NoArgs:     noArgs,
-		ScriptArgs: scriptArgs,
+		Model:         *model,
+		Prompt:        prompt,
+		Repl:          *repl,
+		NoArgs:        noArgs,
+		ScriptArgs:    scriptArgs,
+		RalphMaxTries: *ralphMaxTries,
 		Policy: types.Policy{
 			Readonly: *readonly,
 			DryShell: *dry,

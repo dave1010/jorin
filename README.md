@@ -98,10 +98,11 @@ To force a literal prompt instead of loading a file, use `--prompt`:
 jorin --prompt "./review-code.jorin --target src/"
 ```
 
-Enable Ralph Wiggum loop mode (iterative, self-referential AI loops):
+Enable Ralph Wiggum loop mode (iterative, self-referential AI loops that
+auto-repeat until DONE or max tries):
 
 ```bash
-jorin --ralph "Build a hello world API"
+jorin --ralph --ralph-max-tries 6 "Build a hello world API"
 ```
 
 ## Contributing
