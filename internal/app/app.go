@@ -64,7 +64,7 @@ func Run(ctx context.Context, opts Options) error {
 
 	systemPrompt := prompt.SystemPrompt()
 	if prompt.RalphEnabled() {
-		if err := runRalphLoop(opts.Model, fullPrompt, systemPrompt, &opts.Policy, opts.RalphMaxTries, opts.Stdout); err != nil {
+		if err := runRalphLoop(opts.Model, fullPrompt, systemPrompt, &opts.Policy, opts.RalphMaxTries, opts.Stdout, opts.Stderr); err != nil {
 			return err
 		}
 		return nil
@@ -98,12 +98,17 @@ func buildPrompt(prompt string, args []string, stdin string) string {
 	return strings.Join(parts, "\n\n")
 }
 
-func runRalphLoop(model string, initialPrompt string, systemPrompt string, pol *types.Policy, maxTries int, stdout io.Writer) error {
+func runRalphLoop(model string, initialPrompt string, systemPrompt string, pol *types.Policy, maxTries int, stdout io.Writer, stderr io.Writer) error {
 	if maxTries < 1 {
 		return fmt.Errorf("ralph max tries must be at least 1")
 	}
 	currentPrompt := initialPrompt
 	for i := 0; i < maxTries; i++ {
+		if stderr != nil {
+			if _, err := fmt.Fprintf(stderr, "Ralph iteration %d/%d\n", i+1, maxTries); err != nil {
+				return err
+			}
+		}
 		out, err := agent.RunAgent(model, currentPrompt, systemPrompt, pol)
 		if err != nil {
 			return err
