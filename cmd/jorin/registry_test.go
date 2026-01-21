@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dave1010/jorin/internal/types"
@@ -87,7 +88,7 @@ func TestRegistryReadWriteAndShell(t *testing.T) {
 		t.Fatalf("shell run failed: %v", err)
 	}
 	stdout := outS["stdout"].(string)
-	if stdout == "" || !contains(stdout, "hello") {
+	if stdout == "" || !strings.Contains(stdout, "hello") {
 		t.Fatalf("shell stdout missing hello: %#v", outS["stdout"])
 	}
 }
