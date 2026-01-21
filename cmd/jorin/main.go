@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/dave1010/jorin/internal/app"
+	"github.com/dave1010/jorin/internal/prompt"
 	"github.com/dave1010/jorin/internal/types"
 	"github.com/dave1010/jorin/internal/version"
 )
@@ -25,6 +26,7 @@ func main() {
 	cwd := flag.String("cwd", "", "Working directory for tools")
 	promptFlag := flag.Bool("prompt", false, "Treat first argument as prompt text")
 	promptFileFlag := flag.Bool("prompt-file", false, "Treat first argument as a prompt file")
+	ralph := flag.Bool("ralph", false, "Enable Ralph Wiggum loop instructions")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
 
@@ -36,6 +38,10 @@ func main() {
 	if *promptFlag && *promptFileFlag {
 		fmt.Fprintln(os.Stderr, "ERR: --prompt and --prompt-file cannot be used together")
 		os.Exit(2)
+	}
+
+	if *ralph {
+		prompt.EnableRalph()
 	}
 
 	promptMode := promptModeAuto

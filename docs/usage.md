@@ -101,6 +101,7 @@ cat document.md | jorin
 | `--cwd` | (empty) | Working directory for shell tool execution. |
 | `--prompt` | `false` | Treat the first argument as literal prompt text (disables prompt-file detection). |
 | `--prompt-file` | `false` | Treat the first argument as a prompt file (error if not a readable file). |
+| `--ralph` | `false` | Enable Ralph Wiggum loop instructions in the system prompt. |
 | `--version` | `false` | Print version and exit. |
 
 Notes:
@@ -109,6 +110,20 @@ Notes:
   allowlisted substring.
 - If `--deny` is provided, any substring match blocks execution.
 - `--cwd` applies to the `shell` tool only; read/write paths are used as given.
+
+### Ralph Wiggum loop mode
+
+The `--ralph` flag adds system-prompt guidance for the Ralph Wiggum loop
+technique. Use it when you want the agent to iterate until the task is
+complete, reporting failures as data and making steady incremental progress.
+When the task is fully complete, the agent ends its response with `DONE` on its
+own line.
+
+Example:
+
+```bash
+jorin --ralph "Build a hello world API"
+```
 
 ## REPL commands
 
