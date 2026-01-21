@@ -19,6 +19,11 @@ func EnableRalph() {
 	ralphEnabled.Store(true)
 }
 
+// DisableRalph disables Ralph Wiggum loop instructions in the system prompt.
+func DisableRalph() {
+	ralphEnabled.Store(false)
+}
+
 // RalphEnabled reports whether Ralph Wiggum loop instructions are enabled.
 func RalphEnabled() bool {
 	return ralphEnabled.Load()
