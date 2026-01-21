@@ -102,6 +102,7 @@ cat document.md | jorin
 | `--prompt` | `false` | Treat the first argument as literal prompt text (disables prompt-file detection). |
 | `--prompt-file` | `false` | Treat the first argument as a prompt file (error if not a readable file). |
 | `--ralph` | `false` | Enable Ralph Wiggum loop instructions in the system prompt. |
+| `--ralph-max-tries` | `8` | Maximum iterations for Ralph Wiggum loop mode. |
 | `--version` | `false` | Print version and exit. |
 
 Notes:
@@ -114,15 +115,16 @@ Notes:
 ### Ralph Wiggum loop mode
 
 The `--ralph` flag adds system-prompt guidance for the Ralph Wiggum loop
-technique. Use it when you want the agent to iterate until the task is
-complete, reporting failures as data and making steady incremental progress.
-When the task is fully complete, the agent ends its response with `DONE` on its
-own line.
+technique. When enabled, Jorin will automatically feed each assistant response
+back into the next iteration until it sees a response that ends with `DONE` on
+its own line or the `--ralph-max-tries` limit is reached. Use it when you want
+the agent to iterate until the task is complete, reporting failures as data and
+making steady incremental progress.
 
 Example:
 
 ```bash
-jorin --ralph "Build a hello world API"
+jorin --ralph --ralph-max-tries 6 "Build a hello world API"
 ```
 
 ## REPL commands

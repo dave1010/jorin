@@ -21,16 +21,17 @@ var ErrMissingPrompt = errors.New("provide a prompt or use --repl")
 
 // Options configures the application run.
 type Options struct {
-	Model      string
-	Prompt     string
-	Repl       bool
-	NoArgs     bool
-	ScriptArgs []string
-	Policy     types.Policy
-	Stdin      io.Reader
-	StdinIsTTY bool
-	Stdout     io.Writer
-	Stderr     io.Writer
+	Model         string
+	Prompt        string
+	Repl          bool
+	NoArgs        bool
+	ScriptArgs    []string
+	RalphMaxTries int
+	Policy        types.Policy
+	Stdin         io.Reader
+	StdinIsTTY    bool
+	Stdout        io.Writer
+	Stderr        io.Writer
 }
 
 // Run wires core dependencies and starts either the REPL or a single prompt run.
@@ -61,7 +62,15 @@ func Run(ctx context.Context, opts Options) error {
 		return ErrMissingPrompt
 	}
 
-	out, err := agent.RunAgent(opts.Model, fullPrompt, prompt.SystemPrompt(), &opts.Policy)
+	systemPrompt := prompt.SystemPrompt()
+	if prompt.RalphEnabled() {
+		if err := runRalphLoop(opts.Model, fullPrompt, systemPrompt, &opts.Policy, opts.RalphMaxTries, opts.Stdout); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	out, err := agent.RunAgent(opts.Model, fullPrompt, systemPrompt, &opts.Policy)
 	if err != nil {
 		return err
 	}
@@ -87,4 +96,37 @@ func buildPrompt(prompt string, args []string, stdin string) string {
 		parts = append(parts, "Stdin:\n"+strings.TrimRight(stdin, "\n"))
 	}
 	return strings.Join(parts, "\n\n")
+}
+
+func runRalphLoop(model string, initialPrompt string, systemPrompt string, pol *types.Policy, maxTries int, stdout io.Writer) error {
+	if maxTries < 1 {
+		return fmt.Errorf("ralph max tries must be at least 1")
+	}
+	currentPrompt := initialPrompt
+	for i := 0; i < maxTries; i++ {
+		out, err := agent.RunAgent(model, currentPrompt, systemPrompt, pol)
+		if err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(stdout, out); err != nil {
+			return err
+		}
+		if ralphDone(out) {
+			return nil
+		}
+		currentPrompt = out
+	}
+	return fmt.Errorf("ralph loop reached max tries (%d) without DONE", maxTries)
+}
+
+func ralphDone(output string) bool {
+	lines := strings.Split(output, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		return line == "DONE"
+	}
+	return false
 }

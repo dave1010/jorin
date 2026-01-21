@@ -19,6 +19,11 @@ func EnableRalph() {
 	ralphEnabled.Store(true)
 }
 
+// RalphEnabled reports whether Ralph Wiggum loop instructions are enabled.
+func RalphEnabled() bool {
+	return ralphEnabled.Load()
+}
+
 type ralphProvider struct{}
 
 func (ralphProvider) Provide() string {
