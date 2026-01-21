@@ -121,6 +121,9 @@ its own line or the `--ralph-max-tries` limit is reached. Use it when you want
 the agent to iterate until the task is complete, reporting failures as data and
 making steady incremental progress.
 
+Each iteration prints a progress line (for example, `Ralph iteration 2/6`) to
+stderr before the assistant output.
+
 Example:
 
 ```bash
