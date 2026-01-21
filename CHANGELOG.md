@@ -4,6 +4,7 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- CLI: add --ralph to enable Ralph Wiggum loop instructions in the system prompt.
 - CLI: support stdin prompts and executable Jorin scripts with shebang parsing plus argument forwarding.
 - CLI: treat readable files passed as prompts as prompt files by default, with new --prompt/--prompt-file flags to control ambiguity.
 - Installer: install binaries into /usr/local/bin when possible, otherwise ~/.local/bin, with PATH updates for user installs.
