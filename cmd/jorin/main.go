@@ -13,9 +13,6 @@ import (
 	"github.com/dave1010/jorin/internal/version"
 )
 
-// reference chatSession to avoid unused lint when file exists
-var _ = chatSession
-
 func main() {
 	model := flag.String("model", "gpt-5-mini", "Model ID")
 	repl := flag.Bool("repl", false, "Interactive REPL")
@@ -63,6 +60,7 @@ func main() {
 		os.Exit(1)
 	}
 	noArgs := len(flag.Args()) == 0 && stdinIsTTY
+
 	opts := app.Options{
 		Model:         *model,
 		Prompt:        prompt,
@@ -91,9 +89,6 @@ func main() {
 		os.Exit(1)
 	}
 }
-
-// wrappers so main doesn't import strings package etc.
-func stringJoin(a []string, sep string) string { return strings.Join(a, sep) }
 
 // keep multi flag helpers
 type multiFlag []string

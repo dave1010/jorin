@@ -26,7 +26,7 @@ func resolvePrompt(args []string, mode promptMode) (string, []string, error) {
 		return "", nil, nil
 	}
 	if mode == promptModeText {
-		return stringJoin(args, " "), nil, nil
+		return strings.Join(args, " "), nil, nil
 	}
 	if mode == promptModeFile {
 		prompt, _, err := loadPromptFile(args[0], true)
@@ -43,7 +43,7 @@ func resolvePrompt(args []string, mode promptMode) (string, []string, error) {
 	if ok {
 		return prompt, args[1:], nil
 	}
-	return stringJoin(args, " "), nil, nil
+	return strings.Join(args, " "), nil, nil
 }
 
 func loadPromptFile(path string, require bool) (string, bool, error) {
