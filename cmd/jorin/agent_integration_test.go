@@ -20,12 +20,17 @@ type openAIServer struct {
 	count  int
 }
 
-func newOpenAIServer(t *testing.T, handler func(t *testing.T, req types.ChatRequest, call int) types.ChatResponse) *openAIServer {
+type responseRequest struct {
+	Model string               `json:"model"`
+	Input []types.ResponseItem `json:"input"`
+}
+
+func newOpenAIServer(t *testing.T, handler func(t *testing.T, req responseRequest, call int) types.Response) *openAIServer {
 	t.Helper()
 
 	ois := &openAIServer{}
 	ois.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req types.ChatRequest
+		var req responseRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Errorf("decode request: %v", err)
 			http.Error(w, "bad request", http.StatusBadRequest)
@@ -37,7 +42,7 @@ func newOpenAIServer(t *testing.T, handler func(t *testing.T, req types.ChatRequ
 		current := ois.count
 		ois.mu.Unlock()
 
-		if !strings.HasSuffix(r.URL.Path, "/v1/chat/completions") {
+		if !strings.HasSuffix(r.URL.Path, "/v1/responses") {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
@@ -49,6 +54,35 @@ func newOpenAIServer(t *testing.T, handler func(t *testing.T, req types.ChatRequ
 	}))
 
 	return ois
+}
+
+func responseInputText(item types.ResponseItem) string {
+	for _, content := range item.Content {
+		if content.Type == "input_text" {
+			return content.Text
+		}
+	}
+	return ""
+}
+
+func responseMessageItems(items []types.ResponseItem) []types.ResponseItem {
+	var msgs []types.ResponseItem
+	for _, item := range items {
+		if item.Type == "message" {
+			msgs = append(msgs, item)
+		}
+	}
+	return msgs
+}
+
+func responseToolOutputs(items []types.ResponseItem) []types.ResponseItem {
+	var outputs []types.ResponseItem
+	for _, item := range items {
+		if item.Type == "function_call_output" {
+			outputs = append(outputs, item)
+		}
+	}
+	return outputs
 }
 
 func (o *openAIServer) Close() {
@@ -78,88 +112,66 @@ func TestRunAgentIntegrationFlow(t *testing.T) {
 	}))
 	defer httpServer.Close()
 
-	openAIServer := newOpenAIServer(t, func(t *testing.T, req types.ChatRequest, current int) types.ChatResponse {
+	openAIServer := newOpenAIServer(t, func(t *testing.T, req responseRequest, current int) types.Response {
 		switch current {
 		case 1:
-			if len(req.Messages) != 2 {
-				t.Errorf("expected 2 messages, got %d", len(req.Messages))
+			messages := responseMessageItems(req.Input)
+			if len(messages) != 2 {
+				t.Errorf("expected 2 messages, got %d", len(messages))
 			}
-			if len(req.Messages) > 0 {
-				if req.Messages[0].Role != "system" || !strings.Contains(req.Messages[0].Content, "You are Jorin") {
+			if len(messages) > 0 {
+				if messages[0].Role != "system" || !strings.Contains(responseInputText(messages[0]), "You are Jorin") {
 					t.Errorf("expected system prompt in first message")
 				}
 			}
-			return types.ChatResponse{
-				Choices: []types.Choice{
+			return types.Response{
+				Output: []types.ResponseItem{
 					{
-						Message: types.Message{
-							Role: "assistant",
-							ToolCalls: []types.ToolCall{
-								{
-									ID:   "call_read",
-									Type: "function",
-									Function: struct {
-										Name string          `json:"name"`
-										Args json.RawMessage `json:"arguments"`
-									}{
-										Name: "read_file",
-										Args: json.RawMessage(`{"path":"` + filePath + `"}`),
-									},
-								},
-								{
-									ID:   "call_http",
-									Type: "function",
-									Function: struct {
-										Name string          `json:"name"`
-										Args json.RawMessage `json:"arguments"`
-									}{
-										Name: "http_get",
-										Args: json.RawMessage(`{"url":"` + httpServer.URL + `"}`),
-									},
-								},
-							},
-						},
-						FinishReason: "tool_calls",
+						Type:      "function_call",
+						Name:      "read_file",
+						Arguments: json.RawMessage(`{"path":"` + filePath + `"}`),
+						CallID:    "call_read",
+					},
+					{
+						Type:      "function_call",
+						Name:      "http_get",
+						Arguments: json.RawMessage(`{"url":"` + httpServer.URL + `"}`),
+						CallID:    "call_http",
 					},
 				},
 			}
 		case 2:
-			toolMessages := []types.Message{}
-			for _, msg := range req.Messages {
-				if msg.Role == "tool" {
-					toolMessages = append(toolMessages, msg)
-				}
+			toolOutputs := responseToolOutputs(req.Input)
+			if len(toolOutputs) != 2 {
+				t.Errorf("expected 2 tool outputs, got %d", len(toolOutputs))
 			}
-			if len(toolMessages) != 2 {
-				t.Errorf("expected 2 tool messages, got %d", len(toolMessages))
-			}
-			for _, msg := range toolMessages {
+			for _, item := range toolOutputs {
 				var payload map[string]any
-				if err := json.Unmarshal([]byte(msg.Content), &payload); err != nil {
+				if err := json.Unmarshal([]byte(item.Output), &payload); err != nil {
 					t.Errorf("decode tool payload: %v", err)
 					continue
 				}
-				switch msg.Name {
-				case "read_file":
+				switch item.CallID {
+				case "call_read":
 					if payload["text"] != "hello from file" {
 						t.Errorf("expected read_file payload, got %v", payload["text"])
 					}
-				case "http_get":
+				case "call_http":
 					if payload["status"] != float64(http.StatusOK) || payload["body"] != "payload" {
 						t.Errorf("expected http_get payload, got %v", payload)
 					}
 				default:
-					t.Errorf("unexpected tool name: %s", msg.Name)
+					t.Errorf("unexpected tool call id: %s", item.CallID)
 				}
 			}
-			return types.ChatResponse{
-				Choices: []types.Choice{
+			return types.Response{
+				Output: []types.ResponseItem{
 					{
-						Message: types.Message{
-							Role:    "assistant",
-							Content: "done",
+						Type: "message",
+						Role: "assistant",
+						Content: []types.ResponseContent{
+							{Type: "output_text", Text: "done"},
 						},
-						FinishReason: "stop",
 					},
 				},
 			}
@@ -167,7 +179,7 @@ func TestRunAgentIntegrationFlow(t *testing.T) {
 			t.Fatalf("unexpected request: %d", current)
 		}
 
-		return types.ChatResponse{}
+		return types.Response{}
 	})
 	defer openAIServer.Close()
 
@@ -195,65 +207,47 @@ func TestRunAgentIntegrationStringArgsFallback(t *testing.T) {
 		t.Fatalf("write note.txt: %v", err)
 	}
 
-	openAIServer := newOpenAIServer(t, func(t *testing.T, req types.ChatRequest, current int) types.ChatResponse {
+	openAIServer := newOpenAIServer(t, func(t *testing.T, req responseRequest, current int) types.Response {
 		switch current {
 		case 1:
-			return types.ChatResponse{
-				Choices: []types.Choice{
+			return types.Response{
+				Output: []types.ResponseItem{
 					{
-						Message: types.Message{
-							Role: "assistant",
-							ToolCalls: []types.ToolCall{
-								{
-									ID:   "call_read",
-									Type: "function",
-									Function: struct {
-										Name string          `json:"name"`
-										Args json.RawMessage `json:"arguments"`
-									}{
-										Name: "read_file",
-										Args: json.RawMessage(strconv.Quote(filePath)),
-									},
-								},
-							},
-						},
-						FinishReason: "tool_calls",
+						Type:      "function_call",
+						Name:      "read_file",
+						Arguments: json.RawMessage(strconv.Quote(filePath)),
+						CallID:    "call_read",
 					},
 				},
 			}
 		case 2:
-			toolMessages := []types.Message{}
-			for _, msg := range req.Messages {
-				if msg.Role == "tool" {
-					toolMessages = append(toolMessages, msg)
-				}
+			toolOutputs := responseToolOutputs(req.Input)
+			if len(toolOutputs) != 1 {
+				t.Errorf("expected 1 tool output, got %d", len(toolOutputs))
 			}
-			if len(toolMessages) != 1 {
-				t.Errorf("expected 1 tool message, got %d", len(toolMessages))
-			}
-			if len(toolMessages) == 1 {
+			if len(toolOutputs) == 1 {
 				var payload map[string]any
-				if err := json.Unmarshal([]byte(toolMessages[0].Content), &payload); err != nil {
+				if err := json.Unmarshal([]byte(toolOutputs[0].Output), &payload); err != nil {
 					t.Errorf("decode tool payload: %v", err)
 				} else if payload["text"] != "string args" {
 					t.Errorf("expected string args payload, got %v", payload["text"])
 				}
 			}
-			return types.ChatResponse{
-				Choices: []types.Choice{
+			return types.Response{
+				Output: []types.ResponseItem{
 					{
-						Message: types.Message{
-							Role:    "assistant",
-							Content: "done",
+						Type: "message",
+						Role: "assistant",
+						Content: []types.ResponseContent{
+							{Type: "output_text", Text: "done"},
 						},
-						FinishReason: "stop",
 					},
 				},
 			}
 		default:
 			t.Fatalf("unexpected request: %d", current)
 		}
-		return types.ChatResponse{}
+		return types.Response{}
 	})
 	defer openAIServer.Close()
 
@@ -275,68 +269,50 @@ func TestRunAgentIntegrationStringArgsFallback(t *testing.T) {
 }
 
 func TestRunAgentIntegrationUnknownTool(t *testing.T) {
-	openAIServer := newOpenAIServer(t, func(t *testing.T, req types.ChatRequest, current int) types.ChatResponse {
+	openAIServer := newOpenAIServer(t, func(t *testing.T, req responseRequest, current int) types.Response {
 		switch current {
 		case 1:
-			return types.ChatResponse{
-				Choices: []types.Choice{
+			return types.Response{
+				Output: []types.ResponseItem{
 					{
-						Message: types.Message{
-							Role: "assistant",
-							ToolCalls: []types.ToolCall{
-								{
-									ID:   "call_unknown",
-									Type: "function",
-									Function: struct {
-										Name string          `json:"name"`
-										Args json.RawMessage `json:"arguments"`
-									}{
-										Name: "mystery_tool",
-										Args: json.RawMessage(`{"topic":"tests"}`),
-									},
-								},
-							},
-						},
-						FinishReason: "tool_calls",
+						Type:      "function_call",
+						Name:      "mystery_tool",
+						Arguments: json.RawMessage(`{"topic":"tests"}`),
+						CallID:    "call_unknown",
 					},
 				},
 			}
 		case 2:
-			toolMessages := []types.Message{}
-			for _, msg := range req.Messages {
-				if msg.Role == "tool" {
-					toolMessages = append(toolMessages, msg)
-				}
+			toolOutputs := responseToolOutputs(req.Input)
+			if len(toolOutputs) != 1 {
+				t.Errorf("expected 1 tool output, got %d", len(toolOutputs))
 			}
-			if len(toolMessages) != 1 {
-				t.Errorf("expected 1 tool message, got %d", len(toolMessages))
-			}
-			if len(toolMessages) == 1 {
-				if toolMessages[0].Name != "mystery_tool" {
-					t.Errorf("expected mystery_tool name, got %s", toolMessages[0].Name)
+			if len(toolOutputs) == 1 {
+				if toolOutputs[0].CallID != "call_unknown" {
+					t.Errorf("expected call_unknown id, got %s", toolOutputs[0].CallID)
 				}
 				var payload map[string]any
-				if err := json.Unmarshal([]byte(toolMessages[0].Content), &payload); err != nil {
+				if err := json.Unmarshal([]byte(toolOutputs[0].Output), &payload); err != nil {
 					t.Errorf("decode tool payload: %v", err)
 				} else if payload["error"] != "unknown tool" {
 					t.Errorf("expected unknown tool payload, got %v", payload["error"])
 				}
 			}
-			return types.ChatResponse{
-				Choices: []types.Choice{
+			return types.Response{
+				Output: []types.ResponseItem{
 					{
-						Message: types.Message{
-							Role:    "assistant",
-							Content: "done",
+						Type: "message",
+						Role: "assistant",
+						Content: []types.ResponseContent{
+							{Type: "output_text", Text: "done"},
 						},
-						FinishReason: "stop",
 					},
 				},
 			}
 		default:
 			t.Fatalf("unexpected request: %d", current)
 		}
-		return types.ChatResponse{}
+		return types.Response{}
 	})
 	defer openAIServer.Close()
 

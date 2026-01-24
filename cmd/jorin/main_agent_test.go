@@ -13,47 +13,39 @@ import (
 
 func TestRunAgent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req types.ChatRequest
+		if !strings.HasSuffix(r.URL.Path, "/v1/responses") {
+			t.Errorf("Unexpected path: %s", r.URL.Path)
+		}
+		var req struct {
+			Input []types.ResponseItem `json:"input"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Errorf("Failed to decode request: %v", err)
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
-		var resp types.ChatResponse
-		if len(req.Messages) == 2 && req.Messages[1].Role == "user" {
-			resp = types.ChatResponse{
-				Choices: []types.Choice{
+		var resp types.Response
+		if len(req.Input) == 2 && req.Input[1].Type == "message" && req.Input[1].Role == "user" {
+			resp = types.Response{
+				Output: []types.ResponseItem{
 					{
-						Message: types.Message{
-							Role: "assistant",
-							ToolCalls: []types.ToolCall{
-								{
-									ID:   "call_123",
-									Type: "function",
-									Function: struct {
-										Name string          `json:"name"`
-										Args json.RawMessage `json:"arguments"`
-									}{
-										Name: "read_file",
-										Args: json.RawMessage(`{"path":"test.txt"}`),
-									},
-								},
-							},
-						},
-						FinishReason: "tool_calls",
+						Type:      "function_call",
+						Name:      "read_file",
+						Arguments: json.RawMessage(`{"path":"test.txt"}`),
+						CallID:    "call_123",
 					},
 				},
 			}
-		} else if len(req.Messages) > 2 && req.Messages[len(req.Messages)-1].Role == "tool" {
-			resp = types.ChatResponse{
-				Choices: []types.Choice{
+		} else if len(req.Input) > 2 && req.Input[len(req.Input)-1].Type == "function_call_output" {
+			resp = types.Response{
+				Output: []types.ResponseItem{
 					{
-						Message: types.Message{
-							Role:    "assistant",
-							Content: "File content: hello",
+						Type: "message",
+						Role: "assistant",
+						Content: []types.ResponseContent{
+							{Type: "output_text", Text: "File content: hello"},
 						},
-						FinishReason: "stop",
 					},
 				},
 			}

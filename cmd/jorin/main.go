@@ -25,6 +25,7 @@ func main() {
 	promptFileFlag := flag.Bool("prompt-file", false, "Treat first argument as a prompt file")
 	ralph := flag.Bool("ralph", false, "Enable Ralph Wiggum loop instructions")
 	ralphMaxTries := flag.Int("ralph-max-tries", 8, "Maximum Ralph Wiggum loop iterations")
+	useCompletions := flag.Bool("completions", false, "Use legacy Chat Completions API")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
 
@@ -62,12 +63,13 @@ func main() {
 	noArgs := len(flag.Args()) == 0 && stdinIsTTY
 
 	opts := app.Options{
-		Model:         *model,
-		Prompt:        prompt,
-		Repl:          *repl,
-		NoArgs:        noArgs,
-		ScriptArgs:    scriptArgs,
-		RalphMaxTries: *ralphMaxTries,
+		Model:          *model,
+		Prompt:         prompt,
+		Repl:           *repl,
+		NoArgs:         noArgs,
+		ScriptArgs:     scriptArgs,
+		RalphMaxTries:  *ralphMaxTries,
+		UseCompletions: *useCompletions,
 		Policy: types.Policy{
 			Readonly: *readonly,
 			DryShell: *dry,

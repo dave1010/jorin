@@ -21,22 +21,24 @@ var ErrMissingPrompt = errors.New("provide a prompt or use --repl")
 
 // Options configures the application run.
 type Options struct {
-	Model         string
-	Prompt        string
-	Repl          bool
-	NoArgs        bool
-	ScriptArgs    []string
-	RalphMaxTries int
-	Policy        types.Policy
-	Stdin         io.Reader
-	StdinIsTTY    bool
-	Stdout        io.Writer
-	Stderr        io.Writer
+	Model          string
+	Prompt         string
+	Repl           bool
+	NoArgs         bool
+	ScriptArgs     []string
+	RalphMaxTries  int
+	UseCompletions bool
+	Policy         types.Policy
+	Stdin          io.Reader
+	StdinIsTTY     bool
+	Stdout         io.Writer
+	Stderr         io.Writer
 }
 
 // Run wires core dependencies and starts either the REPL or a single prompt run.
 func Run(ctx context.Context, opts Options) error {
 	plugins.SetModelProvider(func() string { return opts.Model })
+	openai.UseResponses = !opts.UseCompletions
 
 	cfg := repl.DefaultConfig()
 	hist := repl.NewMemHistory(200)

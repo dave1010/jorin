@@ -60,6 +60,9 @@ To use a different OpenAI-compatible endpoint:
 export OPENAI_BASE_URL="https://api.openai.com"
 ```
 
+Jorin uses the Responses API by default; use `--completions` to force the
+legacy Chat Completions endpoint.
+
 ## Quick start
 
 Show help:
