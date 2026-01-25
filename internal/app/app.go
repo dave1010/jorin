@@ -45,29 +45,31 @@ func Run(ctx context.Context, opts Options) error {
 	var agentImpl agent.Agent = &openai.DefaultAgent{}
 
 	if opts.NoArgs || opts.Repl {
-		return repl.StartREPL(repl.StartOptions{
-			Ctx:     ctx,
-			Agent:   agentImpl,
-			Model:   opts.Model,
-			Policy:  &opts.Policy,
-			Input:   opts.Stdin,
-			Output:  opts.Stdout,
-			ErrOut:  opts.Stderr,
-			Config:  cfg,
-			Handler: handler,
-			History: hist,
-		})
+		return runRepl(ctx, opts, cfg, handler, hist, agentImpl)
 	}
+	return runPrompt(opts)
+}
 
-	stdinText := ""
-	if !opts.StdinIsTTY && opts.Stdin != nil {
-		data, err := io.ReadAll(opts.Stdin)
-		if err != nil {
-			return err
-		}
-		stdinText = string(data)
+func runRepl(ctx context.Context, opts Options, cfg *repl.Config, handler commands.Handler, hist repl.History, agentImpl agent.Agent) error {
+	return repl.StartREPL(repl.StartOptions{
+		Ctx:     ctx,
+		Agent:   agentImpl,
+		Model:   opts.Model,
+		Policy:  &opts.Policy,
+		Input:   opts.Stdin,
+		Output:  opts.Stdout,
+		ErrOut:  opts.Stderr,
+		Config:  cfg,
+		Handler: handler,
+		History: hist,
+	})
+}
+
+func runPrompt(opts Options) error {
+	stdinText, err := readPromptStdin(opts)
+	if err != nil {
+		return err
 	}
-
 	fullPrompt := buildPrompt(opts.Prompt, opts.ScriptArgs, stdinText)
 	if strings.TrimSpace(fullPrompt) == "" {
 		return ErrMissingPrompt
@@ -89,6 +91,17 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 	return nil
+}
+
+func readPromptStdin(opts Options) (string, error) {
+	if opts.StdinIsTTY || opts.Stdin == nil {
+		return "", nil
+	}
+	data, err := io.ReadAll(opts.Stdin)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func buildPrompt(prompt string, args []string, stdin string) string {
