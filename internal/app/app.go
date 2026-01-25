@@ -22,17 +22,18 @@ var ErrMissingPrompt = errors.New("provide a prompt or use --repl")
 
 // Config configures the application run.
 type Config struct {
-	Model         string
-	Prompt        string
-	Repl          bool
-	NoArgs        bool
-	ScriptArgs    []string
-	RalphMaxTries int
-	Policy        types.Policy
-	Stdin         io.Reader
-	StdinIsTTY    bool
-	Stdout        io.Writer
-	Stderr        io.Writer
+	Model           string
+	Prompt          string
+	Repl            bool
+	NoArgs          bool
+	ScriptArgs      []string
+	RalphMaxTries   int
+	Policy          types.Policy
+	Stdin           io.Reader
+	StdinIsTTY      bool
+	Stdout          io.Writer
+	Stderr          io.Writer
+	UseResponsesAPI bool
 }
 
 // App holds the application's dependencies.
@@ -48,7 +49,7 @@ func NewApp(cfg *Config) *App {
 
 	return &App{
 		cfg:     cfg,
-		agent:   &openai.DefaultAgent{},
+		agent:   openai.NewDefaultAgent(cfg.UseResponsesAPI),
 		history: repl.NewMemHistory(200),
 	}
 }

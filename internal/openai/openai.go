@@ -17,10 +17,14 @@ func ChatOnce(model string, msgs []types.Message, toolsList []types.Tool) (*type
 }
 
 func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types.Message, string, error) {
+	return chatSessionWithLLM(DefaultLLM, model, msgs, pol)
+}
+
+func chatSessionWithLLM(llm LLM, model string, msgs []types.Message, pol *types.Policy) ([]types.Message, string, error) {
 	toolsList := tools.ToolsManifest()
 	reg := tools.Registry()
 	for i := 0; i < maxChatTurns; i++ {
-		resp, err := ChatOnce(model, msgs, toolsList)
+		resp, err := llm.ChatOnce(model, msgs, toolsList)
 		if err != nil {
 			return msgs, "", err
 		}
@@ -29,6 +33,7 @@ func ChatSession(model string, msgs []types.Message, pol *types.Policy) ([]types
 		}
 		ch := resp.Choices[0]
 		cm := ch.Message
+		cm.ResponseID = resp.ID
 
 		msgs = append(msgs, cm)
 
