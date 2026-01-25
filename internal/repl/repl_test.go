@@ -35,7 +35,18 @@ func TestREPLHandlerDispatch(t *testing.T) {
 	ctx := context.Background()
 	// run StartREPL in the same goroutine; it will exit on EOF
 	var a agent.Agent = &mockAgent{}
-	if err := StartREPL(ctx, a, "test-model", pol, in, out, errOut, cfg, h, hist); err != nil {
+	if err := StartREPL(StartOptions{
+		Ctx:     ctx,
+		Agent:   a,
+		Model:   "test-model",
+		Policy:  pol,
+		Input:   in,
+		Output:  out,
+		ErrOut:  errOut,
+		Config:  cfg,
+		Handler: h,
+		History: hist,
+	}); err != nil {
 		t.Fatalf("StartREPL failed: %v", err)
 	}
 	// ensure history recorded the non-command "hello"

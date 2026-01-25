@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -33,6 +34,9 @@ func TestEscape(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected escaped error, got nil; raw=%s", c.Raw)
 	}
+	if !errors.Is(err, ErrEscaped) {
+		t.Fatalf("expected escaped error, got %v", err)
+	}
 	if c.Raw != "/help" {
 		t.Fatalf("unexpected raw: %s", c.Raw)
 	}
@@ -42,5 +46,8 @@ func TestNotCommand(t *testing.T) {
 	_, err := Parse("nope", "/", "\\")
 	if err == nil {
 		t.Fatalf("expected not a command")
+	}
+	if !errors.Is(err, ErrNotCommand) {
+		t.Fatalf("expected not command error, got %v", err)
 	}
 }

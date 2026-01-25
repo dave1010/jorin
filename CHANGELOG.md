@@ -4,6 +4,8 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- Refactor: simplify REPL wiring with option structs, helper functions, and typed command parse errors.
+- Refactor: clarify OpenAI tool handling, CLI flag parsing, and tool registry helpers.
 - CLI: run Ralph Wiggum loop mode automatically until DONE or a configurable max-tries limit is reached, with per-iteration progress output.
 - CLI: add --ralph to enable Ralph Wiggum loop instructions in the system prompt.
 - CLI: support stdin prompts and executable Jorin scripts with shebang parsing plus argument forwarding.

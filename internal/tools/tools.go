@@ -16,6 +16,12 @@ import (
 	"github.com/dave1010/jorin/internal/types"
 )
 
+const (
+	maxReadFileBytes   = 200_000
+	maxToolOutputBytes = 8000
+	httpTimeout        = 15 * time.Second
+)
+
 // ToolExec is a function that executes a tool given args and a policy.
 type ToolExec func(args map[string]any, cfg *types.Policy) (map[string]any, error)
 
@@ -48,104 +54,114 @@ func ToolsManifest() (list []types.Tool) {
 
 func Registry() map[string]ToolExec {
 	return map[string]ToolExec{
-		"shell": func(args map[string]any, p *types.Policy) (map[string]any, error) {
-			cmdStr, _ := args["cmd"].(string)
-			if cmdStr == "" {
-				return nil, errors.New("missing cmd")
-			}
-			for _, d := range p.Deny {
-				if strings.Contains(cmdStr, d) {
-					return map[string]any{"error": "denied by policy"}, nil
-				}
-			}
-			if len(p.Allow) > 0 {
-				ok := false
-				for _, a := range p.Allow {
-					if strings.Contains(cmdStr, a) {
-						ok = true
-						break
-					}
-				}
-				if !ok {
-					return map[string]any{"error": "not allowed by policy"}, nil
-				}
-			}
-			if p.DryShell {
-				return map[string]any{"dry_run": true, "cmd": cmdStr}, nil
-			}
-			c := exec.Command("bash", "-lc", cmdStr)
-			c.Dir = p.CWD
-			var out bytes.Buffer
-			var errb bytes.Buffer
-			c.Stdout = &out
-			c.Stderr = &errb
-			cErr := c.Run()
-			rc := 0
-			if cErr != nil {
-				if ee, ok := cErr.(*exec.ExitError); ok {
-					rc = ee.ExitCode()
-				} else {
-					rc = 1
-				}
-			}
-			return map[string]any{
-				"returncode": rc,
-				"stdout":     Tail(out.String(), 8000),
-				"stderr":     Tail(errb.String(), 8000),
-			}, nil
-		},
-		"read_file": func(args map[string]any, p *types.Policy) (map[string]any, error) {
-			path, _ := args["path"].(string)
-			if path == "" {
-				return nil, errors.New("missing path")
-			}
-			b, err := os.ReadFile(path)
-			if err != nil {
-				return map[string]any{"error": err.Error()}, nil
-			}
-			txt := string(b)
-			trunc := false
-			if len(txt) > 200_000 {
-				txt = txt[:200_000]
-				trunc = true
-			}
-			return map[string]any{"text": txt, "truncated": trunc}, nil
-		},
-		"write_file": func(args map[string]any, p *types.Policy) (map[string]any, error) {
-			if p.Readonly {
-				return map[string]any{"error": "readonly session"}, nil
-			}
-			path, _ := args["path"].(string)
-			text, _ := args["text"].(string)
-			if path == "" {
-				return nil, errors.New("missing path")
-			}
-			if err := os.MkdirAll(DirOrDot(path), 0o755); err != nil {
-				return map[string]any{"error": err.Error()}, nil
-			}
-			if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
-				return map[string]any{"error": err.Error()}, nil
-			}
-			return map[string]any{"ok": true, "bytes": len(text)}, nil
-		},
-		"http_get": func(args map[string]any, p *types.Policy) (map[string]any, error) {
-			url, _ := args["url"].(string)
-			if url == "" {
-				return nil, errors.New("missing url")
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer cancel()
-			req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return map[string]any{"error": err.Error()}, nil
-			}
-			// best-effort close without an empty branch
-			defer func() { _ = resp.Body.Close() }()
-			b, _ := io.ReadAll(io.LimitReader(resp.Body, 8000))
-			return map[string]any{"status": resp.StatusCode, "body": string(b)}, nil
-		},
+		"shell":      shellToolExec,
+		"read_file":  readFileToolExec,
+		"write_file": writeFileToolExec,
+		"http_get":   httpGetToolExec,
 	}
+}
+
+func shellToolExec(args map[string]any, p *types.Policy) (map[string]any, error) {
+	cmdStr, _ := args["cmd"].(string)
+	if cmdStr == "" {
+		return nil, errors.New("missing cmd")
+	}
+	if allowed, reason := checkShellPolicy(cmdStr, p); !allowed {
+		return map[string]any{"error": reason}, nil
+	}
+	if p.DryShell {
+		return map[string]any{"dry_run": true, "cmd": cmdStr}, nil
+	}
+	cmd := exec.Command("bash", "-lc", cmdStr)
+	cmd.Dir = p.CWD
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	runErr := cmd.Run()
+	return map[string]any{
+		"returncode": exitCode(runErr),
+		"stdout":     Tail(out.String(), maxToolOutputBytes),
+		"stderr":     Tail(errb.String(), maxToolOutputBytes),
+	}, nil
+}
+
+func checkShellPolicy(cmdStr string, p *types.Policy) (bool, string) {
+	for _, d := range p.Deny {
+		if strings.Contains(cmdStr, d) {
+			return false, "denied by policy"
+		}
+	}
+	if len(p.Allow) == 0 {
+		return true, ""
+	}
+	for _, a := range p.Allow {
+		if strings.Contains(cmdStr, a) {
+			return true, ""
+		}
+	}
+	return false, "not allowed by policy"
+}
+
+func exitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	if ee, ok := err.(*exec.ExitError); ok {
+		return ee.ExitCode()
+	}
+	return 1
+}
+
+func readFileToolExec(args map[string]any, _ *types.Policy) (map[string]any, error) {
+	path, _ := args["path"].(string)
+	if path == "" {
+		return nil, errors.New("missing path")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	txt := string(b)
+	if len(txt) > maxReadFileBytes {
+		return map[string]any{"text": txt[:maxReadFileBytes], "truncated": true}, nil
+	}
+	return map[string]any{"text": txt, "truncated": false}, nil
+}
+
+func writeFileToolExec(args map[string]any, p *types.Policy) (map[string]any, error) {
+	if p.Readonly {
+		return map[string]any{"error": "readonly session"}, nil
+	}
+	path, _ := args["path"].(string)
+	text, _ := args["text"].(string)
+	if path == "" {
+		return nil, errors.New("missing path")
+	}
+	if err := os.MkdirAll(DirOrDot(path), 0o755); err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	return map[string]any{"ok": true, "bytes": len(text)}, nil
+}
+
+func httpGetToolExec(args map[string]any, _ *types.Policy) (map[string]any, error) {
+	url, _ := args["url"].(string)
+	if url == "" {
+		return nil, errors.New("missing url")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, maxToolOutputBytes))
+	return map[string]any{"status": resp.StatusCode, "body": string(b)}, nil
 }
 
 func DirOrDot(p string) string {

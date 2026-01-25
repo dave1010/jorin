@@ -2,6 +2,7 @@ package repl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -16,146 +17,195 @@ import (
 // StartREPL runs an interactive REPL using the provided reader/writer. It is
 // testable because IO is injected. It accepts a commands.Handler and a History
 // implementation so command dispatch and history persistence are pluggable.
-func StartREPL(ctx context.Context, a agent.Agent, model string, pol *types.Policy, in io.Reader, out io.Writer, errOut io.Writer, cfg *Config, handler commands.Handler, hist History) error {
-	if cfg == nil {
-		cfg = DefaultConfig()
+type StartOptions struct {
+	Ctx     context.Context
+	Agent   agent.Agent
+	Model   string
+	Policy  *types.Policy
+	Input   io.Reader
+	Output  io.Writer
+	ErrOut  io.Writer
+	Config  *Config
+	Handler commands.Handler
+	History History
+}
+
+func StartREPL(opts StartOptions) error {
+	if opts.Config == nil {
+		opts.Config = DefaultConfig()
 	}
-	if _, err := fmt.Fprintln(out, headerStyleStr("jorin\u003e (Ctrl-D to exit)")); err != nil {
+	if _, err := fmt.Fprintln(opts.Output, headerStyleStr("jorin\u003e (Ctrl-D to exit)")); err != nil {
 		return err
 	}
 	msgs := []types.Message{{Role: "system", Content: prompt.SystemPrompt()}}
 	reg := tools.Registry()
 
 	// create a LineReader that provides proper terminal editing when possible
-	lr := NewLineReader(in, out)
+	lr := NewLineReader(opts.Input, opts.Output)
 	defer func() { _ = lr.Close() }()
-	if hist != nil {
+	if opts.History != nil {
 		// append previous history so arrow-up works for past sessions
-		lr.AppendHistory(hist.List(0))
+		lr.AppendHistory(opts.History.List(0))
 	}
 
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-opts.Ctx.Done():
+			return opts.Ctx.Err()
 		default:
 		}
-		line, err := lr.ReadLine(promptStyleStr(cfg.Prompt))
+		line, done, err := readPromptLine(lr, promptStyleStr(opts.Config.Prompt))
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
+			if _, werr := fmt.Fprintln(opts.ErrOut, errorStyleStr("ERR:"), err); werr != nil {
 				return werr
 			}
 			continue
+		}
+		if done {
+			break
 		}
 		trim := strings.TrimSpace(line)
 		if trim == "" {
 			continue
 		}
-		// attempt to parse as slash command
-		cmd, perr := commands.Parse(trim, cfg.CommandPrefix, cfg.EscapePrefix)
-		if perr == nil {
-			// parsed a command; dispatch to handler
-			handled, err := handler.Handle(ctx, cmd)
-			if err != nil {
-				if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
-					return werr
-				}
-				continue
-			}
-			if handled {
-				// do not forward to model
-				continue
-			}
-			// if not handled, fallthrough and forward command text
-			trim = cmd.Raw
-		} else {
-			// if escaped, Parse returns an error but sets Raw to the unescaped
-			// literal. The parser currently uses an "escaped" error string. If
-			// the parser indicated escaped, use the Raw content. Otherwise it's
-			// not a command and we forward the original trimmed line.
-			if perr.Error() == "escaped" {
-				trim = cmd.Raw
-			}
-		}
-		// legacy: support leading '!' shell commands via tools registry
-		if strings.HasPrefix(trim, "!") {
-			cmdStr := strings.TrimSpace(trim[1:])
-			if cmdStr == "" {
-				if _, werr := fmt.Fprintln(errOut, infoStyleStr("empty shell command")); werr != nil {
-					return werr
-				}
-				continue
-			}
-			if sh, ok := reg["shell"]; ok {
-				res, err := sh(map[string]any{"cmd": cmdStr}, pol)
-				if err != nil {
-					if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
-						return werr
-					}
-					continue
-				}
-				if e, ok := res["error"]; ok {
-					if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), e); werr != nil {
-						return werr
-					}
-					continue
-				}
-				if dr, _ := res["dry_run"].(bool); dr {
-					if c, ok := res["cmd"].(string); ok {
-						if _, werr := fmt.Fprintln(errOut, infoStyleStr("Dry run:"), c); werr != nil {
-							return werr
-						}
-					} else {
-						if _, werr := fmt.Fprintln(errOut, infoStyleStr("Dry run:"), cmdStr); werr != nil {
-							return werr
-						}
-					}
-					continue
-				}
-				if sout, ok := res["stdout"].(string); ok && sout != "" {
-					if _, werr := fmt.Fprintln(out, infoStyleStr(sout)); werr != nil {
-						return werr
-					}
-				}
-				if serr, ok := res["stderr"].(string); ok && serr != "" {
-					if _, werr := fmt.Fprintln(errOut, errorStyleStr(serr)); werr != nil {
-						return werr
-					}
-				}
-				if rc, ok := res["returncode"]; ok {
-					if _, werr := fmt.Fprintln(errOut, infoStyleStr("returncode:"), rc); werr != nil {
-						return werr
-					}
-				}
-				continue
-			}
-			if _, werr := fmt.Fprintln(errOut, errorStyleStr("shell tool not available")); werr != nil {
+		trim, handled, err := parseAndHandleCommand(opts.Ctx, trim, opts.Config, opts.Handler)
+		if err != nil {
+			if _, werr := fmt.Fprintln(opts.ErrOut, errorStyleStr("ERR:"), err); werr != nil {
 				return werr
 			}
 			continue
 		}
-		// forward to model via agent interface
-		msgs = append(msgs, types.Message{Role: "user", Content: trim})
-		if hist != nil {
-			hist.Add(trim)
-		}
-		var outStr string
-		var err2 error
-		msgs, outStr, err2 = a.ChatSession(model, msgs, pol)
-		if err2 != nil {
-			if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err2); werr != nil {
-				return werr
-			}
+		if handled {
 			continue
 		}
-		if _, werr := fmt.Fprintln(out, infoStyleStr(outStr)); werr != nil {
+		handled, err = handleShellCommand(trim, reg, opts.Policy, opts.Output, opts.ErrOut)
+		if err != nil {
+			return err
+		}
+		if handled {
+			continue
+		}
+		msgs, err = forwardToAgent(opts.Agent, opts.Model, trim, opts.Policy, opts.History, msgs, opts.Output, opts.ErrOut)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func readPromptLine(lr LineReader, prompt string) (string, bool, error) {
+	line, err := lr.ReadLine(prompt)
+	if err != nil {
+		if err == io.EOF {
+			return "", true, nil
+		}
+		return "", false, err
+	}
+	return line, false, nil
+}
+
+func parseAndHandleCommand(ctx context.Context, line string, cfg *Config, handler commands.Handler) (string, bool, error) {
+	cmd, err := commands.Parse(line, cfg.CommandPrefix, cfg.EscapePrefix)
+	if err == nil {
+		handled, handleErr := handler.Handle(ctx, cmd)
+		if handleErr != nil {
+			return "", true, handleErr
+		}
+		if handled {
+			return "", true, nil
+		}
+		return cmd.Raw, false, nil
+	}
+	if errors.Is(err, commands.ErrEscaped) {
+		return cmd.Raw, false, nil
+	}
+	return line, false, nil
+}
+
+func handleShellCommand(line string, reg map[string]tools.ToolExec, pol *types.Policy, out io.Writer, errOut io.Writer) (bool, error) {
+	if !strings.HasPrefix(line, "!") {
+		return false, nil
+	}
+	cmdStr := strings.TrimSpace(line[1:])
+	if cmdStr == "" {
+		if _, werr := fmt.Fprintln(errOut, infoStyleStr("empty shell command")); werr != nil {
+			return true, werr
+		}
+		return true, nil
+	}
+	sh, ok := reg["shell"]
+	if !ok {
+		if _, werr := fmt.Fprintln(errOut, errorStyleStr("shell tool not available")); werr != nil {
+			return true, werr
+		}
+		return true, nil
+	}
+	res, err := sh(map[string]any{"cmd": cmdStr}, pol)
+	if err != nil {
+		if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
+			return true, werr
+		}
+		return true, nil
+	}
+	if err := reportShellResult(cmdStr, res, out, errOut); err != nil {
+		return true, err
+	}
+	return true, nil
+}
+
+func reportShellResult(cmdStr string, res map[string]any, out io.Writer, errOut io.Writer) error {
+	if e, ok := res["error"]; ok {
+		if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), e); werr != nil {
+			return werr
+		}
+		return nil
+	}
+	if dr, _ := res["dry_run"].(bool); dr {
+		cmd := cmdStr
+		if c, ok := res["cmd"].(string); ok && c != "" {
+			cmd = c
+		}
+		if _, werr := fmt.Fprintln(errOut, infoStyleStr("Dry run:"), cmd); werr != nil {
+			return werr
+		}
+		return nil
+	}
+	if sout, ok := res["stdout"].(string); ok && sout != "" {
+		if _, werr := fmt.Fprintln(out, infoStyleStr(sout)); werr != nil {
+			return werr
+		}
+	}
+	if serr, ok := res["stderr"].(string); ok && serr != "" {
+		if _, werr := fmt.Fprintln(errOut, errorStyleStr(serr)); werr != nil {
+			return werr
+		}
+	}
+	if rc, ok := res["returncode"]; ok {
+		if _, werr := fmt.Fprintln(errOut, infoStyleStr("returncode:"), rc); werr != nil {
 			return werr
 		}
 	}
 	return nil
+}
+
+func forwardToAgent(a agent.Agent, model string, line string, pol *types.Policy, hist History, msgs []types.Message, out io.Writer, errOut io.Writer) ([]types.Message, error) {
+	msgs = append(msgs, types.Message{Role: "user", Content: line})
+	if hist != nil {
+		hist.Add(line)
+	}
+	var outStr string
+	var err error
+	msgs, outStr, err = a.ChatSession(model, msgs, pol)
+	if err != nil {
+		if _, werr := fmt.Fprintln(errOut, errorStyleStr("ERR:"), err); werr != nil {
+			return msgs, werr
+		}
+		return msgs, nil
+	}
+	if _, werr := fmt.Fprintln(out, infoStyleStr(outStr)); werr != nil {
+		return msgs, werr
+	}
+	return msgs, nil
 }
 
 // The following helper style functions are duplicated from cmd to avoid a

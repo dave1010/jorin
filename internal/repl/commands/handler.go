@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -64,120 +65,176 @@ or longer text:
 }
 
 func (d *defaultHandler) Handle(ctx context.Context, cmd Command) (bool, error) {
-	// check plugin commands first
+	if handled, err := d.handlePluginCommand(ctx, cmd); handled || err != nil {
+		return handled, err
+	}
+	switch cmd.Name {
+	case "debug":
+		return d.handleDebug()
+	case "help":
+		return d.handleHelp(cmd)
+	case "history":
+		return d.handleHistory(cmd)
+	default:
+		return d.handleUnknown(cmd)
+	}
+}
+
+func (d *defaultHandler) handlePluginCommand(ctx context.Context, cmd Command) (bool, error) {
 	if h, ok := plugins.LookupCommand(cmd.Name); ok {
 		return h(ctx, cmd.Name, cmd.Args, cmd.Raw, d.out, d.errOut)
 	}
+	return false, nil
+}
 
-	switch cmd.Name {
-	case "debug":
-		// print system prompt via the supplied callback
-		if d.sysPrompt != nil {
-			if _, err := fmt.Fprintln(d.errOut, d.sysPrompt()); err != nil {
-				return false, err
-			}
-			return true, nil
-		}
+func (d *defaultHandler) handleDebug() (bool, error) {
+	if d.sysPrompt == nil {
 		if _, err := fmt.Fprintln(d.errOut, "debug: system prompt not available"); err != nil {
 			return false, err
 		}
 		return true, nil
-	case "help":
-		// If a specific topic was requested, show it. Otherwise list commands
-		// and available help topics.
-		if len(cmd.Args) > 0 {
-			topic := strings.ToLower(cmd.Args[0])
-			if content, ok := helpTopics[topic]; ok {
-				if _, err := fmt.Fprintln(d.out, content); err != nil {
-					return false, err
-				}
-				return true, nil
-			}
-			// plugin-provided help for commands
-			if desc, subs, ok := plugins.HelpForCommand(topic); ok {
-				if desc != "" {
-					if _, err := fmt.Fprintln(d.out, desc); err != nil {
-						return false, err
-					}
-				}
-				if len(subs) > 0 {
-					if _, err := fmt.Fprintln(d.out, "Subcommands:"); err != nil {
-						return false, err
-					}
-					for sn, sdesc := range subs {
-						if _, err := fmt.Fprintln(d.out, "  "+sn+": "+sdesc); err != nil {
-							return false, err
-						}
-					}
-				}
-				return true, nil
-			}
-			if _, err := fmt.Fprintln(d.errOut, "unknown help topic:", topic); err != nil {
-				return false, err
-			}
-			// fallthrough to list available topics
-		}
-		if _, err := fmt.Fprintln(d.out, "Available commands: /help [topic], /history [n], /debug"); err != nil {
+	}
+	if _, err := fmt.Fprintln(d.errOut, d.sysPrompt()); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (d *defaultHandler) handleHelp(cmd Command) (bool, error) {
+	if len(cmd.Args) > 0 {
+		topic := strings.ToLower(cmd.Args[0])
+		handled, err := d.writeHelpTopic(topic)
+		if err != nil {
 			return false, err
 		}
-		// list help topics
-		topics := []string{}
-		for k := range helpTopics {
-			topics = append(topics, k)
-		}
-		if len(topics) > 0 {
-			if _, err := fmt.Fprintln(d.out, "Help topics:"); err != nil {
-				return false, err
-			}
-			for _, t := range topics {
-				if _, err := fmt.Fprintln(d.out, "  "+t); err != nil {
-					return false, err
-				}
-			}
-		}
-		// include plugin commands in help output
-		if cmds := plugins.ListAllCommands(); len(cmds) > 0 {
-			if _, err := fmt.Fprintln(d.out, "Plugin commands:"); err != nil {
-				return false, err
-			}
-			for name, desc := range cmds {
-				if desc == "" {
-					if _, err := fmt.Fprintln(d.out, "  /"+name); err != nil {
-						return false, err
-					}
-				} else {
-					if _, err := fmt.Fprintln(d.out, "  /"+name+" - "+desc); err != nil {
-						return false, err
-					}
-				}
-			}
-		}
-		return true, nil
-	case "history":
-		limit := 0
-		if len(cmd.Args) > 0 {
-			if v, err := strconv.Atoi(cmd.Args[0]); err == nil {
-				limit = v
-			}
-		}
-		if d.hist == nil {
-			if _, err := fmt.Fprintln(d.errOut, "history not available"); err != nil {
-				return false, err
-			}
+		if handled {
 			return true, nil
 		}
-		list := d.hist.List(limit)
-		for i := range list {
-			if _, err := fmt.Fprintln(d.out, list[i]); err != nil {
-				return false, err
-			}
+		if _, err := fmt.Fprintln(d.errOut, "unknown help topic:", topic); err != nil {
+			return false, err
 		}
-		return true, nil
-	default:
-		// unknown commands result in a friendly message
-		if _, err := fmt.Fprintln(d.errOut, "unknown command:", cmd.Raw); err != nil {
+	}
+	return d.writeHelpIndex()
+}
+
+func (d *defaultHandler) writeHelpTopic(topic string) (bool, error) {
+	if content, ok := helpTopics[topic]; ok {
+		if _, err := fmt.Fprintln(d.out, content); err != nil {
 			return false, err
 		}
 		return true, nil
 	}
+	desc, subs, ok := plugins.HelpForCommand(topic)
+	if !ok {
+		return false, nil
+	}
+	if desc != "" {
+		if _, err := fmt.Fprintln(d.out, desc); err != nil {
+			return false, err
+		}
+	}
+	if len(subs) > 0 {
+		if _, err := fmt.Fprintln(d.out, "Subcommands:"); err != nil {
+			return false, err
+		}
+		for sn, sdesc := range subs {
+			if _, err := fmt.Fprintln(d.out, "  "+sn+": "+sdesc); err != nil {
+				return false, err
+			}
+		}
+	}
+	return true, nil
+}
+
+func (d *defaultHandler) writeHelpIndex() (bool, error) {
+	if _, err := fmt.Fprintln(d.out, "Available commands: /help [topic], /history [n], /debug"); err != nil {
+		return false, err
+	}
+	topics := sortedHelpTopics()
+	if len(topics) > 0 {
+		if _, err := fmt.Fprintln(d.out, "Help topics:"); err != nil {
+			return false, err
+		}
+		for _, t := range topics {
+			if _, err := fmt.Fprintln(d.out, "  "+t); err != nil {
+				return false, err
+			}
+		}
+	}
+	if err := d.writePluginCommands(); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (d *defaultHandler) writePluginCommands() error {
+	cmds := plugins.ListAllCommands()
+	if len(cmds) == 0 {
+		return nil
+	}
+	if _, err := fmt.Fprintln(d.out, "Plugin commands:"); err != nil {
+		return err
+	}
+	names := make([]string, 0, len(cmds))
+	for name := range cmds {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		desc := cmds[name]
+		if desc == "" {
+			if _, err := fmt.Fprintln(d.out, "  /"+name); err != nil {
+				return err
+			}
+			continue
+		}
+		if _, err := fmt.Fprintln(d.out, "  /"+name+" - "+desc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *defaultHandler) handleHistory(cmd Command) (bool, error) {
+	if d.hist == nil {
+		if _, err := fmt.Fprintln(d.errOut, "history not available"); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	limit := parseHistoryLimit(cmd.Args)
+	list := d.hist.List(limit)
+	for _, line := range list {
+		if _, err := fmt.Fprintln(d.out, line); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+func (d *defaultHandler) handleUnknown(cmd Command) (bool, error) {
+	if _, err := fmt.Fprintln(d.errOut, "unknown command:", cmd.Raw); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func parseHistoryLimit(args []string) int {
+	if len(args) == 0 {
+		return 0
+	}
+	limit, err := strconv.Atoi(args[0])
+	if err != nil {
+		return 0
+	}
+	return limit
+}
+
+func sortedHelpTopics() []string {
+	topics := make([]string, 0, len(helpTopics))
+	for k := range helpTopics {
+		topics = append(topics, k)
+	}
+	sort.Strings(topics)
+	return topics
 }
