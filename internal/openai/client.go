@@ -68,58 +68,129 @@ func (o responsesClient) ChatOnce(model string, msgs []types.Message, toolsList 
 	var instructions string
 	var previousResponseID string
 
-	// Find the last message with a ResponseID to use as previousResponseID
-	lastWithID := -1
-	for i := len(msgs) - 1; i >= 0; i-- {
-		if msgs[i].ResponseID != "" {
-			previousResponseID = msgs[i].ResponseID
-			lastWithID = i
-			break
-		}
-	}
+		// Find the last message with a ResponseID to use as previousResponseID
 
-	for i, m := range msgs {
-		if m.Role == "system" {
-			instructions += m.Content + "\n"
-			continue
-		}
+		lastWithID := -1
 
-		// If we found a previousResponseID, skip messages that are already part of it
-		if i <= lastWithID {
-			continue
-		}
+		for i := len(msgs) - 1; i >= 0; i-- {
 
-		if m.Role == "tool" {
-			input = append(input, functionCallOutputItem{
-				Type:   "function_call_output",
-				CallID: m.ToolCallID,
-				Output: m.Content,
-			})
-			continue
-		}
+			if msgs[i].ResponseID != "" {
 
-		input = append(input, inputMessage{
-			Type:    "message",
-			Role:    m.Role,
-			Content: m.Content,
-		})
+				previousResponseID = msgs[i].ResponseID
 
-		if len(m.ToolCalls) > 0 {
-			for _, tc := range m.ToolCalls {
-				input = append(input, functionCallItem{
-					Type:      "function_call",
-					ID:        tc.ID,
-					Name:      tc.Function.Name,
-					Arguments: tc.Function.Args,
-				})
+				lastWithID = i
+
+				break
+
 			}
+
 		}
-	}
+
+	
+
+		for i, m := range msgs {
+
+			if m.Role == "system" {
+
+				instructions += m.Content + "\n"
+
+				continue
+
+			}
+
+	
+
+			// If we found a previousResponseID, skip messages that are already part of it
+
+			if i <= lastWithID {
+
+				continue
+
+			}
+
+	
+
+			if m.Role == "tool" {
+
+				input = append(input, functionCallOutputItem{
+
+					Type:   "function_call_output",
+
+					CallID: m.ToolCallID,
+
+					Output: m.Content,
+
+				})
+
+				continue
+
+			}
+
+	
+
+			if m.Role == "assistant" && m.Content == "" && len(m.ToolCalls) == 0 {
+
+				continue
+
+			}
+
+	
+
+			contentType := "input_text"
+
+			if m.Role == "assistant" {
+
+				contentType = "output_text"
+
+			}
+
+	
+
+			input = append(input, inputMessage{
+
+				Type:    "message",
+
+				Role:    m.Role,
+
+				Content: []any{inputContent{Type: contentType, Text: m.Content}},
+
+			})
+
+	
+
+			if len(m.ToolCalls) > 0 {
+
+				for _, tc := range m.ToolCalls {
+
+					input = append(input, functionCallItem{
+
+						Type:      "function_call",
+
+						CallID:    tc.ID,
+
+						Name:      tc.Function.Name,
+
+						Arguments: tc.Function.Args,
+
+					})
+
+				}
+
+			}
+
+		}
+
+	
 
 	// Map types.Tool to responses API tool format
 	var tools []any
 	for _, t := range toolsList {
-		tools = append(tools, t)
+		tools = append(tools, responseTool{
+			Type:        t.Type,
+			Name:        t.Function.Name,
+			Description: t.Function.Description,
+			Parameters:  t.Function.Parameters,
+		})
 	}
 
 	body := responsesRequest{
@@ -127,10 +198,15 @@ func (o responsesClient) ChatOnce(model string, msgs []types.Message, toolsList 
 		Input:              input,
 		Instructions:       instructions,
 		Tools:              tools,
-		ToolChoice:         "auto",
 		PreviousResponseID: previousResponseID,
 	}
+	if len(tools) > 0 {
+		body.ToolChoice = "auto"
+	}
 	j, _ := json.Marshal(body)
+	if os.Getenv("DEBUG") == "1" {
+		fmt.Fprintf(os.Stderr, "\n--- DEBUG REQUEST to /v1/responses ---\n%s\n", string(j))
+	}
 
 	req, _ := http.NewRequest("POST", openAIBase()+"/v1/responses", bytes.NewReader(j))
 	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
@@ -140,13 +216,18 @@ func (o responsesClient) ChatOnce(model string, msgs []types.Message, toolsList 
 		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
+
+	b, _ := io.ReadAll(resp.Body)
+	if os.Getenv("DEBUG") == "1" {
+		fmt.Fprintf(os.Stderr, "--- DEBUG RESPONSE (%d) ---\n%s\n---\n", resp.StatusCode, string(b))
+	}
+
 	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("API %d: %s", resp.StatusCode, string(b))
 	}
 
 	var r responsesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+	if err := json.Unmarshal(b, &r); err != nil {
 		return nil, err
 	}
 
@@ -165,6 +246,11 @@ func mapResponseToChatResponse(r *responsesResponse) *types.ChatResponse {
 	for _, o := range r.Output {
 		switch o.Type {
 		case "message":
+			for _, c := range o.Content {
+				if c.Type == "output_text" || c.Type == "text" {
+					msg.Content += c.Text
+				}
+			}
 			if o.Message != nil {
 				for _, c := range o.Message.Content {
 					if c.Type == "output_text" || c.Type == "text" {
@@ -173,8 +259,12 @@ func mapResponseToChatResponse(r *responsesResponse) *types.ChatResponse {
 				}
 			}
 		case "function_call":
+			id := o.CallID
+			if id == "" {
+				id = o.ID
+			}
 			msg.ToolCalls = append(msg.ToolCalls, types.ToolCall{
-				ID:   o.ID,
+				ID:   id,
 				Type: "function",
 				Function: struct {
 					Name string          `json:"name"`

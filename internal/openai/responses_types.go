@@ -25,6 +25,8 @@ type responsesOutputItem struct {
 	CallID    string          `json:"call_id,omitempty"`
 	Name      string          `json:"name,omitempty"`
 	Arguments json.RawMessage `json:"arguments,omitempty"`
+	Role      string          `json:"role,omitempty"`
+	Content   []outputContent `json:"content,omitempty"`
 	Message   *outputMessage  `json:"message,omitempty"`
 }
 
@@ -41,12 +43,17 @@ type outputContent struct {
 type inputMessage struct {
 	Type    string `json:"type"`
 	Role    string `json:"role"`
-	Content string `json:"content"`
+	Content []any  `json:"content"`
+}
+
+type inputContent struct {
+	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
 }
 
 type functionCallItem struct {
 	Type      string          `json:"type"`
-	ID        string          `json:"id"`
+	CallID    string          `json:"call_id"`
 	Name      string          `json:"name"`
 	Arguments json.RawMessage `json:"arguments"`
 }
@@ -55,4 +62,11 @@ type functionCallOutputItem struct {
 	Type   string `json:"type"`
 	CallID string `json:"call_id"`
 	Output string `json:"output"`
+}
+
+type responseTool struct {
+	Type        string          `json:"type"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Parameters  json.RawMessage `json:"parameters,omitempty"`
 }
