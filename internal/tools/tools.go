@@ -49,16 +49,36 @@ func ToolsManifest() (list []types.Tool) {
 			Description: "Fetch URL and return body (text).",
 			Parameters:  schema(`{"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}`),
 		}},
+		{Type: "function", Function: types.ToolFunction{
+			Name:        "apply_patch",
+			Description: "Apply a patch to a file to create, update, or delete it. Follows a specific patch format.",
+			Parameters:  schema(`{"type":"object","properties":{"patch":{"type":"string"}},"required":["patch"]}`),
+		}},
 	}
 }
 
 func Registry() map[string]ToolExec {
 	return map[string]ToolExec{
-		"shell":      shellToolExec,
-		"read_file":  readFileToolExec,
-		"write_file": writeFileToolExec,
-		"http_get":   httpGetToolExec,
+		"shell":       shellToolExec,
+		"read_file":   readFileToolExec,
+		"write_file":  writeFileToolExec,
+		"http_get":    httpGetToolExec,
+		"apply_patch": applyPatchToolExec,
 	}
+}
+
+func applyPatchToolExec(args map[string]any, p *types.Policy) (map[string]any, error) {
+	if p.Readonly {
+		return map[string]any{"error": "readonly session"}, nil
+	}
+	patch, _ := args["patch"].(string)
+	if patch == "" {
+		return nil, errors.New("missing patch")
+	}
+	if err := ApplyPatch(patch); err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	return map[string]any{"ok": true}, nil
 }
 
 func shellToolExec(args map[string]any, p *types.Policy) (map[string]any, error) {

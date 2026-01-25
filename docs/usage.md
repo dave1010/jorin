@@ -222,6 +222,26 @@ Response fields:
 - `status`: HTTP status code.
 - `body`: response body (truncated to 8000 bytes).
 
+### `apply_patch`
+
+Applies a patch to a file to create, update, or delete it. The patch must
+follow a specific format similar to `diff -u`.
+
+The patch format must have a header like one of these:
+
+- Create: `--- /dev/null` and `+++ b/path/to/file.txt`
+- Update: `--- a/path/to/file.txt` and `+++ b/path/to/file.txt`
+- Delete: `--- a/path/to/file.txt` and `+++ /dev/null`
+
+Response fields:
+
+- `ok`: boolean success flag.
+- `error`: error message if the patch fails.
+
+Policy behavior:
+
+- `--readonly` returns `{ "error": "readonly session" }` without writing.
+
 ## Exit codes
 
 | Code | Meaning |

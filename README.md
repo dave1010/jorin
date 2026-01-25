@@ -4,7 +4,7 @@
 
 Jorin is a small coding agent written in Go.
 
-It calls tools, like `shell`, `read_file`, `write_file`,
+It calls tools, like `shell`, `read_file`, `write_file`, `apply_patch`,
 `http_get` and communicates with an OpenAI-compatible API.
 It is designed for use as a composable command-line tool for shell scripts
 and also for interactive coding sessions.
