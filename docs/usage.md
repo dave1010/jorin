@@ -32,6 +32,7 @@ Set these environment variables before running jorin:
 | --- | --- |
 | `OPENAI_API_KEY` | API key for OpenAI-compatible endpoints. Required. |
 | `OPENAI_BASE_URL` | Overrides the API base URL (default: `https://api.openai.com`). |
+| `DEBUG` | If set to `1`, prints full JSON requests and responses for the Responses API to stderr. |
 | `NO_COLOR` | Disables ANSI color output when set. |
 | `TERM` | If set to `dumb`, disables color output. |
 
@@ -400,6 +401,16 @@ Likely causes:
 Fix:
 
 - Retry after a short delay, or use a different `OPENAI_BASE_URL`.
+
+### Debugging raw API traffic
+
+If you are experiencing issues with the OpenAI Responses API, you can see the raw JSON requests and responses by setting `DEBUG=1`:
+
+```bash
+DEBUG=1 jorin --use-responses-api "hi"
+```
+
+This will print the traffic to stderr.
 
 ### Shell/tool issues
 

@@ -21,6 +21,7 @@ and [Agent Situations](https://github.com/dave1010/agent-situations).
 ## Documentation
 
 - [Usage guide](docs/usage.md)
+- [OpenAI APIs (Completions vs Responses)](docs/openai-apis.md)
 - [Development and architecture](docs/development.md)
 - [Security notes](docs/security.md)
 - [Contributing](CONTRIBUTING.md)
