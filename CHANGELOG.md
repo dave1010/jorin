@@ -4,6 +4,9 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- Refactor: moved `resolvePromptMode`, `exitWithError`, and `multi` flag helpers to `cmd/jorin/cli.go` to simplify `main.go`.
+- Refactor: renamed `app.Options` to `app.Config` and updated `app.NewApp` to take a pointer to the config.
+- Refactor: updated `app.App` and `ralph.Run` to use the injected `agent.Agent` dependency instead of static package-level calls.
 - Refactor: simplify REPL wiring with option structs, helper functions, and typed command parse errors.
 - Refactor: clarify OpenAI tool handling, CLI flag parsing, and tool registry helpers.
 - Refactor: split app run flow and OpenAI tool-call helpers for clearer ownership.

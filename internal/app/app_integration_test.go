@@ -93,7 +93,7 @@ func TestRunPromptWritesOutput(t *testing.T) {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	opts := Options{
+	cfg := Config{
 		Model:  "test-model",
 		Prompt: "say hi",
 		Policy: types.Policy{},
@@ -102,7 +102,7 @@ func TestRunPromptWritesOutput(t *testing.T) {
 		Stderr: &stderr,
 	}
 
-	if err := Run(context.Background(), opts); err != nil {
+	if err := NewApp(&cfg).Run(context.Background()); err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
 
@@ -130,7 +130,7 @@ func TestRunMissingPrompt(t *testing.T) {
 	llm := &recordingLLM{}
 	withTestLLM(t, llm)
 
-	opts := Options{
+	cfg := Config{
 		Model:  "test-model",
 		Prompt: "   ",
 		Policy: types.Policy{},
@@ -139,7 +139,7 @@ func TestRunMissingPrompt(t *testing.T) {
 		Stderr: &bytes.Buffer{},
 	}
 
-	err := Run(context.Background(), opts)
+	err := NewApp(&cfg).Run(context.Background())
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -156,7 +156,7 @@ func TestRunPromptIncludesArgsAndStdin(t *testing.T) {
 	withTestLLM(t, llm)
 
 	var stdout bytes.Buffer
-	opts := Options{
+	cfg := Config{
 		Model:      "test-model",
 		Prompt:     "summarize",
 		ScriptArgs: []string{"--format", "short"},
@@ -167,7 +167,7 @@ func TestRunPromptIncludesArgsAndStdin(t *testing.T) {
 		Stderr:     &bytes.Buffer{},
 	}
 
-	if err := Run(context.Background(), opts); err != nil {
+	if err := NewApp(&cfg).Run(context.Background()); err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
 
@@ -186,7 +186,7 @@ func TestRunUsesStdinWhenNoPrompt(t *testing.T) {
 	llm := &recordingLLM{}
 	withTestLLM(t, llm)
 
-	opts := Options{
+	cfg := Config{
 		Model:      "test-model",
 		Prompt:     "",
 		Policy:     types.Policy{},
@@ -196,7 +196,7 @@ func TestRunUsesStdinWhenNoPrompt(t *testing.T) {
 		Stderr:     &bytes.Buffer{},
 	}
 
-	if err := Run(context.Background(), opts); err != nil {
+	if err := NewApp(&cfg).Run(context.Background()); err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
 
@@ -238,7 +238,7 @@ func TestRunRalphLoopIntegration(t *testing.T) {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	opts := Options{
+	cfg := Config{
 		Model:         "test-model",
 		Prompt:        "start ralph",
 		Policy:        types.Policy{},
@@ -248,7 +248,7 @@ func TestRunRalphLoopIntegration(t *testing.T) {
 		RalphMaxTries: 3,
 	}
 
-	if err := Run(context.Background(), opts); err != nil {
+	if err := NewApp(&cfg).Run(context.Background()); err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
 
@@ -299,7 +299,7 @@ func TestRunREPLCommandsAndHistory(t *testing.T) {
 	input := strings.NewReader("hello\n/history\n/help repl\n")
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	opts := Options{
+	cfg := Config{
 		Model:  "test-model",
 		Prompt: "ignored",
 		Repl:   true,
@@ -309,7 +309,7 @@ func TestRunREPLCommandsAndHistory(t *testing.T) {
 		Stderr: &stderr,
 	}
 
-	if err := Run(context.Background(), opts); err != nil {
+	if err := NewApp(&cfg).Run(context.Background()); err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
 

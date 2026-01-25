@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"encoding/json"
@@ -65,7 +65,7 @@ func (o *openAIServer) Count() int {
 	return o.count
 }
 
-func TestRunAgentIntegrationFlow(t *testing.T) {
+func TestRunWithSystemPromptIntegrationFlow(t *testing.T) {
 	tmp := t.TempDir()
 	filePath := filepath.Join(tmp, "note.txt")
 	if err := os.WriteFile(filePath, []byte("hello from file"), 0o644); err != nil {
@@ -175,9 +175,9 @@ func TestRunAgentIntegrationFlow(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
 	pol := &types.Policy{}
-	out, err := runAgent("test-model", "read and fetch", pol)
+	out, err := RunWithSystemPrompt("test-model", "read and fetch", pol)
 	if err != nil {
-		t.Fatalf("runAgent failed: %v", err)
+		t.Fatalf("RunWithSystemPrompt failed: %v", err)
 	}
 	if out != "done" {
 		t.Fatalf("expected output to be done, got: %s", out)
@@ -188,7 +188,7 @@ func TestRunAgentIntegrationFlow(t *testing.T) {
 	}
 }
 
-func TestRunAgentIntegrationStringArgsFallback(t *testing.T) {
+func TestRunWithSystemPromptIntegrationStringArgsFallback(t *testing.T) {
 	tmp := t.TempDir()
 	filePath := filepath.Join(tmp, "note.txt")
 	if err := os.WriteFile(filePath, []byte("string args"), 0o644); err != nil {
@@ -261,9 +261,9 @@ func TestRunAgentIntegrationStringArgsFallback(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
 	pol := &types.Policy{}
-	out, err := runAgent("test-model", "read file", pol)
+	out, err := RunWithSystemPrompt("test-model", "read file", pol)
 	if err != nil {
-		t.Fatalf("runAgent failed: %v", err)
+		t.Fatalf("RunWithSystemPrompt failed: %v", err)
 	}
 	if out != "done" {
 		t.Fatalf("expected output to be done, got: %s", out)
@@ -274,7 +274,7 @@ func TestRunAgentIntegrationStringArgsFallback(t *testing.T) {
 	}
 }
 
-func TestRunAgentIntegrationUnknownTool(t *testing.T) {
+func TestRunWithSystemPromptIntegrationUnknownTool(t *testing.T) {
 	openAIServer := newOpenAIServer(t, func(t *testing.T, req types.ChatRequest, current int) types.ChatResponse {
 		switch current {
 		case 1:
@@ -344,9 +344,9 @@ func TestRunAgentIntegrationUnknownTool(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
 	pol := &types.Policy{}
-	out, err := runAgent("test-model", "unknown tool", pol)
+	out, err := RunWithSystemPrompt("test-model", "unknown tool", pol)
 	if err != nil {
-		t.Fatalf("runAgent failed: %v", err)
+		t.Fatalf("RunWithSystemPrompt failed: %v", err)
 	}
 	if out != "done" {
 		t.Fatalf("expected output to be done, got: %s", out)
@@ -354,5 +354,91 @@ func TestRunAgentIntegrationUnknownTool(t *testing.T) {
 
 	if openAIServer.Count() != 2 {
 		t.Fatalf("expected 2 requests, got %d", openAIServer.Count())
+	}
+}
+
+func TestRunWithSystemPrompt(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req types.ChatRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("Failed to decode request: %v", err)
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+
+		var resp types.ChatResponse
+		if len(req.Messages) == 2 && req.Messages[1].Role == "user" {
+			resp = types.ChatResponse{
+				Choices: []types.Choice{
+					{
+						Message: types.Message{
+							Role: "assistant",
+							ToolCalls: []types.ToolCall{
+								{
+									ID:   "call_123",
+									Type: "function",
+									Function: struct {
+										Name string          `json:"name"`
+										Args json.RawMessage `json:"arguments"`
+									}{
+										Name: "read_file",
+										Args: json.RawMessage(`{"path":"test.txt"}`),
+									},
+								},
+							},
+						},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+		} else if len(req.Messages) > 2 && req.Messages[len(req.Messages)-1].Role == "tool" {
+			resp = types.ChatResponse{
+				Choices: []types.Choice{
+					{
+						Message: types.Message{
+							Role:    "assistant",
+							Content: "File content: hello",
+						},
+						FinishReason: "stop",
+					},
+				},
+			}
+		} else {
+			t.Errorf("Unexpected request: %v", req)
+			http.Error(w, "Unexpected request", http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Errorf("Failed to encode response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	if err := os.Setenv("OPENAI_BASE_URL", server.URL); err != nil {
+		t.Fatalf("failed to set env: %v", err)
+	}
+	if err := os.Setenv("OPENAI_API_KEY", "test-key"); err != nil {
+		t.Fatalf("failed to set env: %v", err)
+	}
+
+	if err := os.WriteFile("test.txt", []byte("hello"), 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+	defer func() {
+		if err := os.Remove("test.txt"); err != nil {
+			t.Fatalf("failed to remove test file: %v", err)
+		}
+	}()
+
+	pol := &types.Policy{}
+	out, err := RunWithSystemPrompt("test-model", "read the file test.txt", pol)
+	if err != nil {
+		t.Fatalf("RunWithSystemPrompt failed: %v", err)
+	}
+
+	if !strings.Contains(out, "File content: hello") {
+		t.Errorf("Expected output to contain 'File content: hello', but got: %s", out)
 	}
 }
