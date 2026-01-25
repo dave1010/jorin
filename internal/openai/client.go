@@ -24,6 +24,14 @@ type LLM interface {
 // HTTP client implementation below.
 var DefaultLLM LLM = completionsClient{}
 
+func UseResponsesAPI() {
+	DefaultLLM = responsesClient{}
+}
+
+func UseCompletionsAPI() {
+	DefaultLLM = completionsClient{}
+}
+
 type completionsClient struct{}
 
 type responsesClient struct{}
@@ -68,119 +76,100 @@ func (o responsesClient) ChatOnce(model string, msgs []types.Message, toolsList 
 	var instructions string
 	var previousResponseID string
 
-		// Find the last message with a ResponseID to use as previousResponseID
+	// Find the last message with a ResponseID to use as previousResponseID
 
-		lastWithID := -1
+	lastWithID := -1
 
-		for i := len(msgs) - 1; i >= 0; i-- {
+	for i := len(msgs) - 1; i >= 0; i-- {
 
-			if msgs[i].ResponseID != "" {
+		if msgs[i].ResponseID != "" {
 
-				previousResponseID = msgs[i].ResponseID
+			previousResponseID = msgs[i].ResponseID
 
-				lastWithID = i
+			lastWithID = i
 
-				break
-
-			}
+			break
 
 		}
 
-	
+	}
 
-		for i, m := range msgs {
+	for i, m := range msgs {
 
-			if m.Role == "system" {
+		if m.Role == "system" {
 
-				instructions += m.Content + "\n"
+			instructions += m.Content + "\n"
 
-				continue
+			continue
 
-			}
+		}
 
-	
+		// If we found a previousResponseID, skip messages that are already part of it
 
-			// If we found a previousResponseID, skip messages that are already part of it
+		if i <= lastWithID {
 
-			if i <= lastWithID {
+			continue
 
-				continue
+		}
 
-			}
+		if m.Role == "tool" {
 
-	
+			input = append(input, functionCallOutputItem{
 
-			if m.Role == "tool" {
+				Type: "function_call_output",
 
-				input = append(input, functionCallOutputItem{
+				CallID: m.ToolCallID,
 
-					Type:   "function_call_output",
-
-					CallID: m.ToolCallID,
-
-					Output: m.Content,
-
-				})
-
-				continue
-
-			}
-
-	
-
-			if m.Role == "assistant" && m.Content == "" && len(m.ToolCalls) == 0 {
-
-				continue
-
-			}
-
-	
-
-			contentType := "input_text"
-
-			if m.Role == "assistant" {
-
-				contentType = "output_text"
-
-			}
-
-	
-
-			input = append(input, inputMessage{
-
-				Type:    "message",
-
-				Role:    m.Role,
-
-				Content: []any{inputContent{Type: contentType, Text: m.Content}},
-
+				Output: m.Content,
 			})
 
-	
+			continue
 
-			if len(m.ToolCalls) > 0 {
+		}
 
-				for _, tc := range m.ToolCalls {
+		if m.Role == "assistant" && m.Content == "" && len(m.ToolCalls) == 0 {
 
-					input = append(input, functionCallItem{
+			continue
 
-						Type:      "function_call",
+		}
 
-						CallID:    tc.ID,
+		contentType := "input_text"
 
-						Name:      tc.Function.Name,
+		if m.Role == "assistant" {
 
-						Arguments: tc.Function.Args,
+			contentType = "output_text"
 
-					})
+		}
 
-				}
+		input = append(input, inputMessage{
+
+			Type: "message",
+
+			Role: m.Role,
+
+			Content: []any{inputContent{Type: contentType, Text: m.Content}},
+		})
+
+		if len(m.ToolCalls) > 0 {
+
+			for _, tc := range m.ToolCalls {
+
+				input = append(input, functionCallItem{
+
+					Type: "function_call",
+
+					CallID: tc.ID,
+
+					Name: tc.Function.Name,
+
+					Arguments: tc.Function.Args,
+				})
 
 			}
 
 		}
 
-	
+	}
 
 	// Map types.Tool to responses API tool format
 	var tools []any
