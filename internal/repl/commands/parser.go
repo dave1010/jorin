@@ -7,6 +7,13 @@ import (
 	"strings"
 )
 
+var (
+	ErrEmpty        = errors.New("empty")
+	ErrEscaped      = errors.New("escaped")
+	ErrNotCommand   = errors.New("not a command")
+	ErrEmptyCommand = errors.New("empty command")
+)
+
 // Command represents a parsed slash command line.
 type Command struct {
 	Raw  string
@@ -34,15 +41,15 @@ func Parse(line string, prefix string, escapePrefix string) (Command, error) {
 	}
 	line = strings.TrimSpace(line)
 	if line == "" {
-		return c, errors.New("empty")
+		return c, ErrEmpty
 	}
 	// escaped prefix, e.g. "\/help" -> "/help" (not a command)
 	if strings.HasPrefix(line, escapePrefix+prefix) {
 		c.Raw = strings.TrimPrefix(line, escapePrefix)
-		return c, errors.New("escaped")
+		return c, ErrEscaped
 	}
 	if !strings.HasPrefix(line, prefix) {
-		return c, errors.New("not a command")
+		return c, ErrNotCommand
 	}
 	// remove leading prefix
 	s := strings.TrimPrefix(line, prefix)
@@ -50,7 +57,7 @@ func Parse(line string, prefix string, escapePrefix string) (Command, error) {
 	re := regexp.MustCompile(`'[^']*'|"[^"]*"|\S+`)
 	parts := re.FindAllString(s, -1)
 	if len(parts) == 0 {
-		return c, errors.New("empty command")
+		return c, ErrEmptyCommand
 	}
 	// extract name (first token) and strip quotes from args
 	c.Name = parts[0]
