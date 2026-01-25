@@ -10,6 +10,7 @@ type Message struct {
 	Name       string     `json:"name,omitempty"`
 	ToolCallID string     `json:"tool_call_id,omitempty"`
 	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ResponseID string     `json:"response_id,omitempty"`
 }
 
 type ToolCall struct {
@@ -33,11 +34,12 @@ type ToolFunction struct {
 }
 
 type ChatRequest struct {
-	Model       string      `json:"model"`
-	Messages    []Message   `json:"messages"`
-	Tools       []Tool      `json:"tools,omitempty"`
-	ToolChoice  interface{} `json:"tool_choice,omitempty"` // "auto"
-	Temperature float32     `json:"temperature,omitempty"`
+	Model              string      `json:"model"`
+	Messages           []Message   `json:"messages"`
+	Tools              []Tool      `json:"tools,omitempty"`
+	ToolChoice         interface{} `json:"tool_choice,omitempty"` // "auto"
+	Temperature        float32     `json:"temperature,omitempty"`
+	PreviousResponseID string      `json:"previous_response_id,omitempty"`
 }
 
 type Choice struct {
@@ -46,6 +48,7 @@ type Choice struct {
 }
 
 type ChatResponse struct {
+	ID      string   `json:"id,omitempty"`
 	Choices []Choice `json:"choices"`
 }
 

@@ -24,12 +24,13 @@ func main() {
 	noArgs := len(flag.Args()) == 0 && stdinIsTTY
 
 	cfg := app.Config{
-		Model:         cli.model,
-		Prompt:        promptText,
-		Repl:          cli.repl,
-		NoArgs:        noArgs,
-		ScriptArgs:    scriptArgs,
-		RalphMaxTries: cli.ralphMaxTries,
+		Model:           cli.model,
+		Prompt:          promptText,
+		Repl:            cli.repl,
+		NoArgs:          noArgs,
+		ScriptArgs:      scriptArgs,
+		RalphMaxTries:   cli.ralphMaxTries,
+		UseResponsesAPI: cli.useResponsesAPI,
 		Policy: types.Policy{
 			Readonly: cli.readonly,
 			DryShell: cli.dryShell,

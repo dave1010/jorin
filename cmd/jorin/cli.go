@@ -12,18 +12,19 @@ import (
 )
 
 type Config struct {
-	model          string
-	repl           bool
-	readonly       bool
-	dryShell       bool
-	allow          []string
-	deny           []string
-	cwd            string
-	promptFlag     bool
-	promptFileFlag bool
-	ralph          bool
-	ralphMaxTries  int
-	versionFlag    bool
+	model           string
+	repl            bool
+	readonly        bool
+	dryShell        bool
+	allow           []string
+	deny            []string
+	cwd             string
+	promptFlag      bool
+	promptFileFlag  bool
+	ralph           bool
+	ralphMaxTries   int
+	versionFlag     bool
+	useResponsesAPI bool
 }
 
 func parseFlags() Config {
@@ -39,21 +40,23 @@ func parseFlags() Config {
 	ralph := flag.Bool("ralph", false, "Enable Ralph Wiggum loop instructions")
 	ralphMaxTries := flag.Int("ralph-max-tries", 8, "Maximum Ralph Wiggum loop iterations")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
+	useResponsesAPI := flag.Bool("use-responses-api", false, "Use the new OpenAI Responses API instead of Chat Completions")
 	flag.Parse()
 
 	return Config{
-		model:          *model,
-		repl:           *repl,
-		readonly:       *readonly,
-		dryShell:       *dry,
-		allow:          *allow,
-		deny:           *deny,
-		cwd:            *cwd,
-		promptFlag:     *promptFlag,
-		promptFileFlag: *promptFileFlag,
-		ralph:          *ralph,
-		ralphMaxTries:  *ralphMaxTries,
-		versionFlag:    *versionFlag,
+		model:           *model,
+		repl:            *repl,
+		readonly:        *readonly,
+		dryShell:        *dry,
+		allow:           *allow,
+		deny:            *deny,
+		cwd:             *cwd,
+		promptFlag:      *promptFlag,
+		promptFileFlag:  *promptFileFlag,
+		ralph:           *ralph,
+		ralphMaxTries:   *ralphMaxTries,
+		versionFlag:     *versionFlag,
+		useResponsesAPI: *useResponsesAPI,
 	}
 }
 
