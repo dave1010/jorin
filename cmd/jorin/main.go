@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
+	flag "github.com/spf13/pflag"
 	"os"
 	"strings"
 
@@ -102,14 +102,14 @@ func handlePreflight(cli cliConfig) {
 		os.Exit(0)
 	}
 	if cli.promptFlag && cli.promptFileFlag {
-		fmt.Fprintln(os.Stderr, "ERR: --prompt and --prompt-file cannot be used together")
+		fmt.Fprintln(os.Stderr, "ERR: flag --prompt and --prompt-file cannot be used together")
 		os.Exit(2)
 	}
 	if cli.ralph {
 		prompt.EnableRalph()
 	}
 	if cli.ralphMaxTries < 1 {
-		fmt.Fprintln(os.Stderr, "ERR: --ralph-max-tries must be at least 1")
+		fmt.Fprintln(os.Stderr, "ERR: flag --ralph-max-tries must be at least 1")
 		os.Exit(2)
 	}
 }
@@ -138,6 +138,7 @@ type multiFlag []string
 
 func (m *multiFlag) String() string     { return strings.Join(*m, ",") }
 func (m *multiFlag) Set(v string) error { *m = append(*m, v); return nil }
+func (m *multiFlag) Type() string       { return "stringSlice" }
 func multi(name, usage string) *multiFlag {
 	var v multiFlag
 	flag.Var(&v, name, usage)
