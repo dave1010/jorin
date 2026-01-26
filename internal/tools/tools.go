@@ -51,7 +51,7 @@ func ToolsManifest() (list []types.Tool) {
 		}},
 		{Type: "function", Function: types.ToolFunction{
 			Name:        "apply_patch",
-			Description: "Apply a patch to a file to create, update, or delete it. Follows a specific patch format.",
+			Description: "Apply a patch to a file to create, update, or delete it. The patch must be in a simplified unified diff format. It MUST start with '--- filename' and '+++ filename' (or '/dev/null'). Context lines must start with a space. Example update:\n--- a/README.md\n+++ b/README.md\n@@ -1,1 +1,1 @@\n-Old text\n+New text\n unchanged context",
 			Parameters:  schema(`{"type":"object","properties":{"patch":{"type":"string"}},"required":["patch"]}`),
 		}},
 	}
