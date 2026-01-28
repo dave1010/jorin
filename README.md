@@ -2,7 +2,7 @@
 
 ![Logo](docs/jorin-logo-and-name.png)
 
-Jorin is a small coding agent written in Go.
+[**Jorin**](https://jorin.ai) is a small coding agent written in Go.
 
 It calls tools, like `shell`, `read_file`, `write_file`, `apply_patch`,
 `http_get` and communicates with an OpenAI-compatible API.
