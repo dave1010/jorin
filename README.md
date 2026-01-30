@@ -40,7 +40,7 @@ The installer will place `jorin` in `/usr/local/bin` when it can, otherwise it
 uses `~/.local/bin` and updates your shell profile to add it to `$PATH`.
 Set `JORIN_INSTALL_DIR` to override the install location.
 
-## Manual install
+### Manual install
 
 Download the latest release for your platform from
 [GitHub Releases](https://github.com/dave1010/jorin/releases).
@@ -117,4 +117,4 @@ MIT
 
 ## Colophon
 
-"Jorin" is pronounced "jorin", not "JOR-in" or "jor-IN". Say it quickly, but not so quickly that it feels rushed: Jorin. That's it! The name comes from looking at my keyboard and trying to find something without too many Google results.
+"Jorin" is pronounced **jorin**, not *JOR-in* or *jor-IN*. Say it quickly, but not so quickly that it feels rushed: **Jorin**. That's it! The name comes from looking at my keyboard and trying to find something without too many Google results.
