@@ -45,7 +45,7 @@ Set `JORIN_INSTALL_DIR` to override the install location.
 Download the latest release for your platform from
 [GitHub Releases](https://github.com/dave1010/jorin/releases).
 
-Then add it to your $PATH.
+Then add it to your `$PATH`.
 
 ## Configuration
 
