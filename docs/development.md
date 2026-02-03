@@ -87,10 +87,10 @@ core code.
 - Providers are concatenated in registration order with blank lines between
   sections.
 - Default providers include the immutable base instructions, AGENTS.md (when
-  present), Skills from ~/.jorin/skills and ./.jorin/skills (SKILL.md
-  descriptions), and Situations from ~/.jorin/situations and ./.jorin/situations
+  present), Skills from ~/.agents/skills and ./.agents/skills (SKILL.md
+  descriptions), and Situations from ~/.agents/situations and ./.agents/situations
   (executables that emit contextual snippets wrapped in XML-like tags).
-- The repository ships runtime context Situations in ./.jorin/situations for git
+- The repository ships runtime context Situations in ./.agents/situations for git
   status, runtime environment, available executables, and Go module detection.
 
 ## Contributing

@@ -258,7 +258,7 @@ Situations (Jorin-specific).
 
 ### Skills (Anthropic convention)
 
-Skills live under `~/.jorin/skills` or `./.jorin/skills`, one directory per
+Skills live under `~/.agents/skills` or `./.agents/skills`, one directory per
 skill. Each skill directory must include a `SKILL.md` with YAML frontmatter
 (`name`, `description`).
 
@@ -272,7 +272,7 @@ Reference: [Claude Code Skills](https://code.claude.com/docs/en/skills)
 ### Situations (Jorin convention)
 
 Situations are executable context providers that emit prompt snippets. Create
-them under `~/.jorin/situations` or `./.jorin/situations` (project-specific).
+them under `~/.agents/situations` or `./.agents/situations` (project-specific).
 Each situation lives in its own folder with a `SITUATION.yaml` metadata file
 and an executable referenced by the `run` field.
 
@@ -282,7 +282,7 @@ and an executable referenced by the `run` field.
 - Output is wrapped in `<name>...</name>` tags and appended to the system
   prompt. `name` defaults to the directory name when omitted.
 
-The repository ships built-in situations under `./.jorin/situations` for
+The repository ships built-in situations under `./.agents/situations` for
 reporting git status, runtime environment, available executables, and Go module
 detection.
 
@@ -292,14 +292,14 @@ Blog: [Giving coding agents situational awareness (from shell prompts to agent p
 Example:
 
 ```text
-~/.jorin/situations/php/SITUATION.yaml
+~/.agents/situations/php/SITUATION.yaml
 name: php
 description: Detect PHP projects via .php-version.
 run: run
 ```
 
 ```bash
-~/.jorin/situations/php/run
+~/.agents/situations/php/run
 #!/usr/bin/env bash
 set -euo pipefail
 

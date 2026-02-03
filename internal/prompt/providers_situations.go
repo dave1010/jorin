@@ -19,7 +19,7 @@ type situationEntry struct {
 	metadata situationMetadata
 }
 
-// situationsProvider appends situation output from ~/.jorin/situations and ./.jorin/situations.
+// situationsProvider appends situation output from ~/.agents/situations and ./.agents/situations.
 type situationsProvider struct{}
 
 func (situationsProvider) Provide() string {
@@ -107,10 +107,10 @@ func situationsEntries() []situationEntry {
 func situationsDirPaths() []string {
 	paths := []string{}
 	if wd, err := os.Getwd(); err == nil {
-		paths = append(paths, filepath.Join(wd, ".jorin", "situations"))
+		paths = append(paths, filepath.Join(wd, ".agents", "situations"))
 	}
 	if home, err := os.UserHomeDir(); err == nil {
-		paths = append(paths, filepath.Join(home, ".jorin", "situations"))
+		paths = append(paths, filepath.Join(home, ".agents", "situations"))
 	}
 	return paths
 }

@@ -18,6 +18,7 @@ This file summarizes notable project changes grouped into semantic version-style
 - CLI: treat readable files passed as prompts as prompt files by default, with new --prompt/--prompt-file flags to control ambiguity.
 - Installer: install binaries into /usr/local/bin when possible, otherwise ~/.local/bin, with PATH updates for user installs.
 - Refactor: extracted system prompt providers into internal/prompt, moved REPL core and commands into internal/repl, and introduced internal/app for wiring.
+- Refactor: renamed the project Skills/Situations directory from .jorin to .agents.
 - Tests: added an integration test suite that exercises system prompt composition and tool-call interactions via mock OpenAI servers.
 - Tests: expanded tool-calling integration coverage for string argument fallback and unknown tool handling.
 - Tests: added integration coverage for app runs, REPL command handling, and history output.
@@ -27,9 +28,9 @@ This file summarizes notable project changes grouped into semantic version-style
 - Docs: cleaned up README and usage docs, with updated Skills/Situations guidance and built-in situation list.
 - Docs: added a comprehensive CLI reference and troubleshooting guide, and linked them from README and usage docs.
 - Docs: added a Situations skill guide for creating and editing Situations.
-- Prompt providers: added support for personal Skills under ~/.jorin/skills and ./.jorin/skills, adding their descriptions to the system prompt.
-- Prompt providers: added executable Situations (from ~/.jorin/situations and ./.jorin/situations) that emit tagged prompt context.
-- Prompt providers: moved runtime env/git/tooling context into built-in Situations under ./.jorin/situations.
+- Prompt providers: added support for personal Skills under ~/.agents/skills and ./.agents/skills, adding their descriptions to the system prompt.
+- Prompt providers: added executable Situations (from ~/.agents/situations and ./.agents/situations) that emit tagged prompt context.
+- Prompt providers: moved runtime env/git/tooling context into built-in Situations under ./.agents/situations.
 
 ## v0.0.8 — 2025-11-27
 

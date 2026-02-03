@@ -11,7 +11,7 @@ type skillMetadata struct {
 	description string
 }
 
-// skillsProvider appends skill descriptions from ~/.jorin/skills and ./.jorin/skills.
+// skillsProvider appends skill descriptions from ~/.agents/skills and ./.agents/skills.
 type skillsProvider struct{}
 
 func (skillsProvider) Provide() string {
@@ -44,7 +44,7 @@ func (skillsProvider) Provide() string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("## Skills\nYou have new skills. If any skill might be relevant then you MUST read the corresponding SKILL.md from `./.jorin/skills/<skill-name>/SKILL.md` or `~/.jorin/skills/<skill-name>/SKILL.md`. Skills available:\n")
+	b.WriteString("## Skills\nYou have new skills. If any skill might be relevant then you MUST read the corresponding SKILL.md from `./.agents/skills/<skill-name>/SKILL.md` or `~/.agents/skills/<skill-name>/SKILL.md`. Skills available:\n")
 	for _, skill := range skills {
 		b.WriteString("- ")
 		b.WriteString(skill.name)
@@ -58,10 +58,10 @@ func (skillsProvider) Provide() string {
 func skillsDirPaths() []string {
 	paths := []string{}
 	if wd, err := os.Getwd(); err == nil {
-		paths = append(paths, filepath.Join(wd, ".jorin", "skills"))
+		paths = append(paths, filepath.Join(wd, ".agents", "skills"))
 	}
 	if home, err := os.UserHomeDir(); err == nil {
-		paths = append(paths, filepath.Join(home, ".jorin", "skills"))
+		paths = append(paths, filepath.Join(home, ".agents", "skills"))
 	}
 	return paths
 }
