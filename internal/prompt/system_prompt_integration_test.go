@@ -29,7 +29,7 @@ func TestSystemPromptIncludesProviders(t *testing.T) {
 		t.Fatalf("write AGENTS.md: %v", err)
 	}
 
-	skillDir := filepath.Join(tmp, ".jorin", "skills", "demo-skill")
+	skillDir := filepath.Join(tmp, ".agents", "skills", "demo-skill")
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {
 		t.Fatalf("mkdir skill dir: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestSystemPromptIncludesProviders(t *testing.T) {
 		t.Fatalf("write SKILL.md: %v", err)
 	}
 
-	situationDir := filepath.Join(tmp, ".jorin", "situations", "demo")
+	situationDir := filepath.Join(tmp, ".agents", "situations", "demo")
 	if err := os.MkdirAll(situationDir, 0o755); err != nil {
 		t.Fatalf("mkdir situation dir: %v", err)
 	}

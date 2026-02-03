@@ -46,7 +46,7 @@ Steps:
 1. Add internal/config package to load config from:
    - CLI flags (highest)
    - environment variables
-   - project override file (.jorin/config or local file)
+   - project override file (.agents/config or local file)
    - XDG/standard config location ($XDG_CONFIG_HOME/jorin)
    - defaults
 2. Choose a CLI library: cobra + pflag is recommended for subcommands and integration with viper for config. If avoiding viper complexity, implement a small explicit precedence system.
