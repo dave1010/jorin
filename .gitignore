@@ -12,3 +12,5 @@
 bin/
 *.exe
 *.test
+!bin/
+!bin/jorin.js

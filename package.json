@@ -1,0 +1,20 @@
+{
+  "name": "jorin",
+  "version": "0.0.0",
+  "description": "Jorin is a small coding agent written in Go.",
+  "license": "MIT",
+  "repository": "github:dave1010/jorin",
+  "homepage": "https://github.com/dave1010/jorin",
+  "bugs": {
+    "url": "https://github.com/dave1010/jorin/issues"
+  },
+  "bin": {
+    "jorin": "bin/jorin.js"
+  },
+  "files": [
+    "bin/"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
