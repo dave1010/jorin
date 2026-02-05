@@ -1,0 +1,35 @@
+name: Publish npm package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Set package version
+        env:
+          TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          if [ -n "${TAG}" ]; then
+            VERSION="${TAG#v}"
+            npm version "${VERSION}" --no-git-tag-version
+          fi
+
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

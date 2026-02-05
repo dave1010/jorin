@@ -36,6 +36,12 @@ One line install:
 curl -fsSL https://get.jorin.ai | bash
 ```
 
+Quick run with npx (no install needed):
+
+```bash
+npx jorin --help
+```
+
 The installer will place `jorin` in `/usr/local/bin` when it can, otherwise it
 uses `~/.local/bin` and updates your shell profile to add it to `$PATH`.
 Set `JORIN_INSTALL_DIR` to override the install location.
