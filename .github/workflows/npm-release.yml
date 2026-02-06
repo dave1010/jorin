@@ -29,6 +29,35 @@ jobs:
             npm version "${VERSION}" --no-git-tag-version
           fi
 
+      - name: Download release binaries
+        env:
+          TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          if [ -z "${TAG}" ]; then
+            echo "TAG is required to download release assets."
+            exit 1
+          fi
+
+          mkdir -p dist
+          assets=(
+            "jorin-linux-amd64"
+            "jorin-linux-arm64"
+            "jorin-linux-386"
+            "jorin-linux-arm"
+            "jorin-darwin-amd64"
+            "jorin-darwin-arm64"
+            "jorin-windows-amd64.exe"
+            "jorin-windows-386.exe"
+            "jorin-android-arm64"
+            "jorin-freebsd-amd64"
+          )
+
+          for asset in "${assets[@]}"; do
+            url="https://github.com/dave1010/jorin/releases/download/${TAG}/${asset}"
+            echo "Downloading ${url}"
+            curl -fsSL "${url}" -o "dist/${asset}"
+          done
+
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

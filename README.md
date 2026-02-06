@@ -42,6 +42,10 @@ Quick run with npx (no install needed):
 npx jorin --help
 ```
 
+The npm package bundles prebuilt binaries for supported platforms and will
+use them when available, falling back to downloading the matching GitHub
+release asset if needed.
+
 The installer will place `jorin` in `/usr/local/bin` when it can, otherwise it
 uses `~/.local/bin` and updates your shell profile to add it to `$PATH`.
 Set `JORIN_INSTALL_DIR` to override the install location.

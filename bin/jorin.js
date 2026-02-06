@@ -106,25 +106,30 @@ async function main() {
   const assetName = `jorin-${platform}-${arch}${ext}`;
   const cacheName = `jorin-${platform}-${arch}-${tag}${ext}`.replace(/[/:]/g, "-");
   const targetPath = path.join(baseDir, cacheName);
+  const bundledPath = path.join(__dirname, "..", "dist", assetName);
 
   const shouldRedownload = process.env.JORIN_NPX_FORCE === "1" || !fs.existsSync(targetPath);
   if (shouldRedownload) {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "jorin-npx-"));
-    const tmpPath = path.join(tmpDir, assetName);
+    if (fs.existsSync(bundledPath)) {
+      fs.copyFileSync(bundledPath, targetPath);
+    } else {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "jorin-npx-"));
+      const tmpPath = path.join(tmpDir, assetName);
 
-    const url =
-      mode === "latest"
-        ? `https://github.com/dave1010/jorin/releases/latest/download/${assetName}`
-        : `https://github.com/dave1010/jorin/releases/download/${tag}/${assetName}`;
+      const url =
+        mode === "latest"
+          ? `https://github.com/dave1010/jorin/releases/latest/download/${assetName}`
+          : `https://github.com/dave1010/jorin/releases/download/${tag}/${assetName}`;
 
-    process.stderr.write(`Downloading ${assetName} (${mode === "latest" ? "latest" : tag})...\n`);
-    await downloadFile(url, tmpPath);
+      process.stderr.write(`Downloading ${assetName} (${mode === "latest" ? "latest" : tag})...\n`);
+      await downloadFile(url, tmpPath);
 
-    if (platform !== "windows") {
-      fs.chmodSync(tmpPath, 0o755);
+      if (platform !== "windows") {
+        fs.chmodSync(tmpPath, 0o755);
+      }
+
+      fs.renameSync(tmpPath, targetPath);
     }
-
-    fs.renameSync(tmpPath, targetPath);
   }
 
   if (platform !== "windows") {
