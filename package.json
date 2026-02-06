@@ -12,7 +12,8 @@
     "jorin": "bin/jorin.js"
   },
   "files": [
-    "bin/"
+    "bin/",
+    "dist/"
   ],
   "engines": {
     "node": ">=18"
