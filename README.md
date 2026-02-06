@@ -23,6 +23,7 @@ and [Agent Situations](https://github.com/dave1010/agent-situations).
 - [Usage guide](docs/usage.md)
 - [OpenAI APIs (Completions vs Responses)](docs/openai-apis.md)
 - [Development and architecture](docs/development.md)
+- [Release process](docs/release.md)
 - [Security notes](docs/security.md)
 - [Contributing](CONTRIBUTING.md)
 - [Code of conduct](CODE_OF_CONDUCT.md)

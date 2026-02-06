@@ -98,3 +98,7 @@ core code.
 See CONTRIBUTING.md and CODE_OF_CONDUCT.md for contribution guidelines. When
 submitting changes, run `make fmt`, `make test`, and `make lint` locally before
 opening a PR.
+
+## Releases
+
+See docs/release.md for the current release checklist and workflow details.

@@ -4,6 +4,10 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+- (nothing yet)
+
+## v0.0.10 - 2026-02-06
+
 - API: fixed the OpenAI Responses API implementation to correctly map tools, handle function call IDs, and manage message history.
 - API: added `DEBUG=1` environment variable to print raw JSON requests and responses for the Responses API to stderr.
 - Tools: added the new `apply_patch` tool for deterministic file edits.
