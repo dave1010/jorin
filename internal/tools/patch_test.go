@@ -394,3 +394,106 @@ func TestApplyPatch_ReproIssues(t *testing.T) {
 		}
 	})
 }
+
+func TestApplyPatch_BeginPatch(t *testing.T) {
+	dir := t.TempDir()
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd() error = %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("os.Chdir() error = %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Fatalf("failed to change back to wd: %v", err)
+		}
+	}()
+
+	if err := os.WriteFile("a.txt", []byte("old\n"), 0644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+	if err := os.WriteFile("c.txt", []byte("remove\n"), 0644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	patch := `*** Begin Patch
+*** Update File: a.txt
+@@ -1,1 +1,1 @@
+-old
++new
+*** Add File: b.txt
++hello
++world
+*** Delete File: c.txt
+*** End Patch
+`
+
+	if err := ApplyPatch(patch); err != nil {
+		t.Fatalf("ApplyPatch() error = %v", err)
+	}
+
+	updated, err := os.ReadFile("a.txt")
+	if err != nil {
+		t.Fatalf("os.ReadFile() error = %v", err)
+	}
+	if string(updated) != "new\n" {
+		t.Errorf("updated a.txt = %q, want %q", string(updated), "new\n")
+	}
+
+	added, err := os.ReadFile("b.txt")
+	if err != nil {
+		t.Fatalf("os.ReadFile() error = %v", err)
+	}
+	if string(added) != "hello\nworld\n" {
+		t.Errorf("added b.txt = %q, want %q", string(added), "hello\nworld\n")
+	}
+
+	if _, err := os.Stat("c.txt"); !os.IsNotExist(err) {
+		t.Errorf("file %q should have been deleted", "c.txt")
+	}
+}
+
+func TestApplyPatch_BeginPatch_Move(t *testing.T) {
+	dir := t.TempDir()
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd() error = %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("os.Chdir() error = %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Fatalf("failed to change back to wd: %v", err)
+		}
+	}()
+
+	if err := os.WriteFile("move.txt", []byte("old\n"), 0644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	patch := `*** Begin Patch
+*** Update File: move.txt
+*** Move to: nested/moved.txt
+@@ -1,1 +1,1 @@
+-old
++new
+*** End Patch
+`
+
+	if err := ApplyPatch(patch); err != nil {
+		t.Fatalf("ApplyPatch() error = %v", err)
+	}
+
+	if _, err := os.Stat("move.txt"); !os.IsNotExist(err) {
+		t.Errorf("file %q should have been moved", "move.txt")
+	}
+	moved, err := os.ReadFile("nested/moved.txt")
+	if err != nil {
+		t.Fatalf("os.ReadFile() error = %v", err)
+	}
+	if string(moved) != "new\n" {
+		t.Errorf("moved content = %q, want %q", string(moved), "new\n")
+	}
+}

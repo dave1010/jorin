@@ -225,14 +225,21 @@ Response fields:
 
 ### `apply_patch`
 
-Applies a patch to a file to create, update, or delete it. The patch must
-follow a specific format similar to `diff -u`.
+Applies a patch to a file to create, update, delete, or move it. Two formats
+are supported: unified diff (`diff -u`) and the `*** Begin Patch` format.
 
-The patch format must have a header like one of these:
+Unified diff headers:
 
 - Create: `--- /dev/null` and `+++ b/path/to/file.txt`
 - Update: `--- a/path/to/file.txt` and `+++ b/path/to/file.txt`
 - Delete: `--- a/path/to/file.txt` and `+++ /dev/null`
+
+`*** Begin Patch` headers:
+
+- Add: `*** Add File: path/to/file.txt`
+- Update: `*** Update File: path/to/file.txt`
+- Delete: `*** Delete File: path/to/file.txt`
+- Move: `*** Move to: new/path.txt` (used inside an Update section)
 
 Response fields:
 
