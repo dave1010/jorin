@@ -7,6 +7,7 @@ This file summarizes notable project changes grouped into semantic version-style
 - API: fixed the OpenAI Responses API implementation to correctly map tools, handle function call IDs, and manage message history.
 - API: added `DEBUG=1` environment variable to print raw JSON requests and responses for the Responses API to stderr.
 - Tools: added the new `apply_patch` tool for deterministic file edits.
+- Tools: expanded `apply_patch` to accept `*** Begin Patch` format (including moves) and multi-file patches.
 - Refactor: moved `resolvePromptMode`, `exitWithError`, and `multi` flag helpers to `cmd/jorin/cli.go` to simplify `main.go`.
 - Refactor: renamed `app.Options` to `app.Config` and updated `app.NewApp` to take a pointer to the config.
 - Refactor: updated `app.App` and `ralph.Run` to use the injected `agent.Agent` dependency instead of static package-level calls.

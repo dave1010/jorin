@@ -27,7 +27,22 @@ type hunk struct {
 type parsedPatch struct {
 	op       operation
 	filePath string
+	moveTo   string
 	hunks    []hunk
+}
+
+func parsePatchSet(patch string) ([]parsedPatch, error) {
+	if hasBeginPatch(patch) {
+		return parseBeginPatch(patch)
+	}
+	p, err := parsePatch(patch)
+	if err != nil {
+		if looksLikeBeginPatch(patch) {
+			return nil, errors.New("invalid patch format: missing '*** Begin Patch' header")
+		}
+		return nil, fmt.Errorf("invalid patch format: expected unified diff (---/+++) or '*** Begin Patch' format: %w", err)
+	}
+	return []parsedPatch{*p}, nil
 }
 
 func parsePatch(patch string) (*parsedPatch, error) {
@@ -115,6 +130,126 @@ func parsePatch(patch string) (*parsedPatch, error) {
 	return &p, nil
 }
 
+func parseBeginPatch(patch string) ([]parsedPatch, error) {
+	scanner := bufio.NewScanner(strings.NewReader(patch))
+	foundBegin := false
+	for scanner.Scan() {
+		if strings.HasPrefix(scanner.Text(), "*** Begin Patch") {
+			foundBegin = true
+			break
+		}
+	}
+	if !foundBegin {
+		return nil, errors.New("invalid patch format: missing '*** Begin Patch' header")
+	}
+
+	var patches []parsedPatch
+	var current *parsedPatch
+	var currentHunk *hunk
+
+	flushHunk := func() {
+		if current != nil && currentHunk != nil {
+			current.hunks = append(current.hunks, *currentHunk)
+			currentHunk = nil
+		}
+	}
+
+	flushPatch := func() {
+		flushHunk()
+		if current != nil {
+			patches = append(patches, *current)
+			current = nil
+		}
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "*** End Patch") {
+			break
+		}
+		switch {
+		case strings.HasPrefix(line, "*** Add File: "):
+			flushPatch()
+			path := strings.TrimSpace(strings.TrimPrefix(line, "*** Add File: "))
+			current = &parsedPatch{op: opCreate, filePath: path}
+			currentHunk = &hunk{}
+		case strings.HasPrefix(line, "*** Delete File: "):
+			flushPatch()
+			path := strings.TrimSpace(strings.TrimPrefix(line, "*** Delete File: "))
+			patches = append(patches, parsedPatch{op: opDelete, filePath: path})
+		case strings.HasPrefix(line, "*** Update File: "):
+			flushPatch()
+			path := strings.TrimSpace(strings.TrimPrefix(line, "*** Update File: "))
+			current = &parsedPatch{op: opUpdate, filePath: path}
+		case strings.HasPrefix(line, "*** Move to: "):
+			if current == nil || current.op != opUpdate {
+				return nil, fmt.Errorf("unexpected move header without update: %q", line)
+			}
+			current.moveTo = strings.TrimSpace(strings.TrimPrefix(line, "*** Move to: "))
+		case strings.HasPrefix(line, "@@"):
+			if current == nil || current.op != opUpdate {
+				return nil, fmt.Errorf("unexpected hunk header outside update: %q", line)
+			}
+			flushHunk()
+			currentHunk = &hunk{}
+			_, err := fmt.Sscanf(line, "@@ -%d,%d +%d,%d @@", &currentHunk.oldStart, &currentHunk.oldLen, &currentHunk.newStart, &currentHunk.newLen)
+			if err != nil {
+				_, err = fmt.Sscanf(line, "@@ -%d +%d @@", &currentHunk.oldStart, &currentHunk.newStart)
+				if err != nil {
+					return nil, fmt.Errorf("malformed hunk header: %q. Expected format '@@ -oldStart,oldLen +newStart,newLen @@'", line)
+				}
+				currentHunk.oldLen = 1
+				currentHunk.newLen = 1
+			}
+		default:
+			if current == nil {
+				continue
+			}
+			switch current.op {
+			case opCreate:
+				if !strings.HasPrefix(line, "+") {
+					return nil, fmt.Errorf("invalid add file line: %q", line)
+				}
+				currentHunk.lines = append(currentHunk.lines, line)
+			case opUpdate:
+				if currentHunk == nil {
+					currentHunk = &hunk{oldStart: 1, oldLen: 1, newStart: 1, newLen: 1}
+				}
+				if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
+					currentHunk.lines = append(currentHunk.lines, line)
+				} else {
+					return nil, fmt.Errorf("invalid update line: %q", line)
+				}
+			case opDelete:
+				return nil, fmt.Errorf("unexpected content after delete header: %q", line)
+			}
+		}
+	}
+
+	flushPatch()
+
+	if len(patches) == 0 {
+		return nil, errors.New("invalid patch format: no hunks found")
+	}
+	return patches, nil
+}
+
+func hasBeginPatch(patch string) bool {
+	scanner := bufio.NewScanner(strings.NewReader(patch))
+	for scanner.Scan() {
+		if strings.HasPrefix(scanner.Text(), "*** Begin Patch") {
+			return true
+		}
+	}
+	return false
+}
+
+func looksLikeBeginPatch(patch string) bool {
+	return strings.Contains(patch, "*** Update File: ") ||
+		strings.Contains(patch, "*** Add File: ") ||
+		strings.Contains(patch, "*** Delete File: ")
+}
+
 func parseFilePath(line string) (string, error) {
 	parts := strings.SplitN(line, " ", 2)
 	if len(parts) != 2 {
@@ -128,20 +263,38 @@ func parseFilePath(line string) (string, error) {
 }
 
 func ApplyPatch(patch string) error {
-	p, err := parsePatch(patch)
+	patches, err := parsePatchSet(patch)
 	if err != nil {
 		return err
 	}
 
-	switch p.op {
-	case opCreate:
-		return createFile(p.filePath, p.hunks)
-	case opUpdate:
-		return updateFile(p.filePath, p.hunks)
-	case opDelete:
-		return deleteFile(p.filePath)
+	for _, p := range patches {
+		switch p.op {
+		case opCreate:
+			if err := createFile(p.filePath, p.hunks); err != nil {
+				return err
+			}
+		case opUpdate:
+			if err := updateFile(p.filePath, p.hunks); err != nil {
+				return err
+			}
+			if p.moveTo != "" && p.moveTo != p.filePath {
+				if err := os.MkdirAll(DirOrDot(p.moveTo), 0o755); err != nil {
+					return err
+				}
+				if err := os.Rename(p.filePath, p.moveTo); err != nil {
+					return err
+				}
+			}
+		case opDelete:
+			if err := deleteFile(p.filePath); err != nil {
+				return err
+			}
+		default:
+			return errors.New("unknown operation")
+		}
 	}
-	return errors.New("unknown operation")
+	return nil
 }
 
 func createFile(path string, hunks []hunk) error {
@@ -160,6 +313,9 @@ func createFile(path string, hunks []hunk) error {
 		}
 	}
 
+	if err := os.MkdirAll(DirOrDot(path), 0o755); err != nil {
+		return err
+	}
 	return os.WriteFile(path, []byte(content.String()), 0644)
 }
 
