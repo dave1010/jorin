@@ -19,6 +19,7 @@ This file summarizes notable project changes grouped into semantic version-style
 - Installer: install binaries into /usr/local/bin when possible, otherwise ~/.local/bin, with PATH updates for user installs.
 - Installer: add an `npx jorin` distribution that downloads the correct release binary for the host OS/architecture.
 - Installer: bundle release binaries into the npm package so npx can run offline when supported.
+- CI: publish the npm package with npm trusted publishing (OIDC) instead of a long-lived token.
 - Refactor: extracted system prompt providers into internal/prompt, moved REPL core and commands into internal/repl, and introduced internal/app for wiring.
 - Refactor: renamed the project Skills/Situations directory from .jorin to .agents.
 - Tests: added an integration test suite that exercises system prompt composition and tool-call interactions via mock OpenAI servers.
