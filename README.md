@@ -18,6 +18,25 @@ and [Agent Situations](https://github.com/dave1010/agent-situations).
 
 ![jorin screenshot](docs/jorin-screenshot.png)
 
+
+## Rust migration status
+
+The Rust port now supports end-to-end single-shot agent execution with OpenAI Chat Completions, including tool-call loops and the core built-in tools (`shell`, `read_file`, `write_file`, `http_get`, `apply_patch`). Prompt mode behavior (`--prompt`, `--prompt-file`, and auto shebang detection) is also ported.
+
+REPL mode and some advanced features (plugin integrations and full Responses API parity) are still being ported from Go.
+
+Run the Rust binary locally with:
+
+```bash
+cargo run -- --help
+```
+
+Example single prompt run:
+
+```bash
+OPENAI_API_KEY=... cargo run -- "Refactor src/main.rs for clarity"
+```
+
 ## Documentation
 
 - [Usage guide](docs/usage.md)

@@ -4,6 +4,13 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
+### Added
+- Rust migration bootstrap: `Cargo.toml`, a starter `src/main.rs`, smoke tests, and a Rust CI workflow.
+
+### Changed
+- Rust migration: ported prompt resolution behavior (`--prompt`, `--prompt-file`, auto file detection with jorin shebang stripping) and expanded Rust CLI smoke/unit tests for these flows.
+- Rust migration: added an end-to-end single-shot agent loop for Chat Completions with iterative tool calls and Rust implementations for `shell`, `read_file`, `write_file`, `http_get`, and `apply_patch`.
+
 - (nothing yet)
 
 ## v0.0.10 - 2026-02-06
