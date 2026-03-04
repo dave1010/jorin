@@ -15,6 +15,7 @@ import (
 	"github.com/dave1010/jorin/internal/repl"
 	"github.com/dave1010/jorin/internal/repl/commands"
 	"github.com/dave1010/jorin/internal/types"
+	"github.com/dave1010/jorin/internal/web"
 )
 
 // ErrMissingPrompt is returned when no prompt is provided and REPL is not requested.
@@ -34,6 +35,8 @@ type Config struct {
 	Stdout          io.Writer
 	Stderr          io.Writer
 	UseResponsesAPI bool
+	Web             bool
+	WebAddr         string
 }
 
 // App holds the application's dependencies.
@@ -56,10 +59,24 @@ func NewApp(cfg *Config) *App {
 
 // Run wires core dependencies and starts either the REPL or a single prompt run.
 func (a *App) Run(ctx context.Context) error {
+	if a.cfg.Web {
+		return a.runWeb(ctx)
+	}
 	if a.cfg.NoArgs || a.cfg.Repl {
 		return a.runRepl(ctx)
 	}
 	return a.runPrompt()
+}
+
+func (a *App) runWeb(ctx context.Context) error {
+	srv := web.NewServer(web.Config{
+		Addr:   a.cfg.WebAddr,
+		Model:  a.cfg.Model,
+		Agent:  a.agent,
+		Policy: &a.cfg.Policy,
+		ErrOut: a.cfg.Stderr,
+	})
+	return srv.Run(ctx)
 }
 
 func (a *App) runRepl(ctx context.Context) error {

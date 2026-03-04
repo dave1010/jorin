@@ -104,6 +104,8 @@ cat document.md | jorin
 | `--prompt-file` | `false` | Treat the first argument as a prompt file (error if not a readable file). |
 | `--ralph` | `false` | Enable Ralph Wiggum loop instructions in the system prompt. |
 | `--ralph-max-tries` | `8` | Maximum iterations for Ralph Wiggum loop mode. |
+| `--web` | `false` | Run Jorin as an HTTP service with browser UI and JSON API. |
+| `--web-addr` | `127.0.0.1:8080` | Address the web service listens on. |
 | `--version` | `false` | Print version and exit. |
 
 Notes:
@@ -112,6 +114,34 @@ Notes:
   allowlisted substring.
 - If `--deny` is provided, any substring match blocks execution.
 - `--cwd` applies to the `shell` tool only; read/write paths are used as given.
+
+### Web service mode
+
+Start Jorin as a local web app/API server:
+
+```bash
+jorin --web --web-addr 127.0.0.1:8080
+```
+
+Then open `http://127.0.0.1:8080` in your browser.
+
+HTTP endpoints:
+
+- `GET /`: Browser chat UI.
+- `POST /api/chat`: Send/continue chat sessions.
+- `GET /healthz`: Health check endpoint returning `ok`.
+
+`POST /api/chat` request body example:
+
+```json
+{
+  "messages": [
+    {"role": "user", "content": "Refactor this function"},
+    {"role": "assistant", "content": "Sure, share the code."},
+    {"role": "user", "content": "Here it is..."}
+  ]
+}
+```
 
 ### Ralph Wiggum loop mode
 

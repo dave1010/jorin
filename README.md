@@ -92,6 +92,12 @@ Send a single prompt:
 jorin "Refactor function X to be smaller"
 ```
 
+Run as a local web service and open the browser UI:
+
+```bash
+jorin --web --web-addr 127.0.0.1:8080
+```
+
 Pipe stdin into a prompt:
 
 ```bash
