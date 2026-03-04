@@ -23,6 +23,8 @@ type Config struct {
 	promptFileFlag  bool
 	ralph           bool
 	ralphMaxTries   int
+	web             bool
+	webAddr         string
 	versionFlag     bool
 	useResponsesAPI bool
 }
@@ -39,6 +41,8 @@ func parseFlags() Config {
 	promptFileFlag := flag.Bool("prompt-file", false, "Treat first argument as a prompt file")
 	ralph := flag.Bool("ralph", false, "Enable Ralph Wiggum loop instructions")
 	ralphMaxTries := flag.Int("ralph-max-tries", 8, "Maximum Ralph Wiggum loop iterations")
+	web := flag.Bool("web", false, "Run as an HTTP web service")
+	webAddr := flag.String("web-addr", "127.0.0.1:8080", "Address for web service listener")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	useResponsesAPI := flag.Bool("use-responses-api", false, "Use the new OpenAI Responses API instead of Chat Completions")
 	flag.Parse()
@@ -55,6 +59,8 @@ func parseFlags() Config {
 		promptFileFlag:  *promptFileFlag,
 		ralph:           *ralph,
 		ralphMaxTries:   *ralphMaxTries,
+		web:             *web,
+		webAddr:         *webAddr,
 		versionFlag:     *versionFlag,
 		useResponsesAPI: *useResponsesAPI,
 	}

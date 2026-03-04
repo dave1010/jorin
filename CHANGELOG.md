@@ -4,7 +4,9 @@ This file summarizes notable project changes grouped into semantic version-style
 
 ## Unreleased
 
-- (nothing yet)
+- CLI: added `--web` and `--web-addr` flags to run Jorin as an HTTP web service.
+- Web: added browser chat UI (`GET /`), chat API (`POST /api/chat`), and health endpoint (`GET /healthz`).
+- Tests: added unit tests for the new web routes and chat request validation.
 
 ## v0.0.10 - 2026-02-06
 

@@ -16,12 +16,17 @@ func main() {
 
 	promptMode := resolvePromptMode(cli.promptFlag, cli.promptFileFlag)
 	stdinIsTTY := isTTY(os.Stdin)
-	promptText, scriptArgs, err := resolvePrompt(flag.Args(), promptMode)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "ERR:", err)
-		os.Exit(1)
-	}
+	promptText := ""
+	scriptArgs := []string(nil)
 	noArgs := len(flag.Args()) == 0 && stdinIsTTY
+	if !cli.web {
+		var err error
+		promptText, scriptArgs, err = resolvePrompt(flag.Args(), promptMode)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ERR:", err)
+			os.Exit(1)
+		}
+	}
 
 	cfg := app.Config{
 		Model:           cli.model,
@@ -31,6 +36,8 @@ func main() {
 		ScriptArgs:      scriptArgs,
 		RalphMaxTries:   cli.ralphMaxTries,
 		UseResponsesAPI: cli.useResponsesAPI,
+		Web:             cli.web,
+		WebAddr:         cli.webAddr,
 		Policy: types.Policy{
 			Readonly: cli.readonly,
 			DryShell: cli.dryShell,
